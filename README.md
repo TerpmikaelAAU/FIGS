@@ -26,7 +26,10 @@ antiSMASH  InterProScan6 (Nextflow)   OMArk (completeness + consistency)
 funannotate2 annotate                 │
 (Pfam, dbCAN, MEROPS, Swiss-Prot, BUSCO, GO + the above)
         │                             │
-        └──────── final_summary.tsv ──┘
+        │                             │
+        ├──────── final_summary.tsv ──┘
+        │
+NCBI submission (table2asn, validated)   only for genomes with ncbi_submission set
 ```
 
 ## Directory layout
@@ -40,23 +43,24 @@ config/
 profile/
   config.yaml          # BioCloud SLURM executor profile
 workflow/
-  rules/               # 0_ ... 9_, one stage per file
+  rules/               # 0_ ... 10_, one stage per file
   envs/                # tool+version reference (see "Containers")
-  scripts/             # fix_annotations.py, summarize_results.py
+  scripts/             # fix_annotations.py, summarize_results.py, NCBI scripts
 data/
   local_assemblies/    # drop your own *.fna/*.fa/*.fasta here (optional)
   genomes/             # staged, unified input (created by the pipeline)
   databases/           # antiSMASH / funannotate2 / InterProScan6 / OMArk DBs
-resources/             # geneML + funannotate2-addons installs (created by the pipeline)
+resources/             # geneML, funannotate2-addons, table2asn (created by the pipeline)
 results/
   <genome>/
-    01_preprocess/     # cleaned + soft-masked assembly
+    01_preprocess/     # cleaned + soft-masked assembly, <genome>.seqinfo.tsv
     02_geneml/         # geneML output + the final gene models (*.models.*)
     03_antismash/
     04_interproscan/
     05_annotations/    # antiSMASH + InterProScan6 as funannotate2 tables
     06_annotate/       # <genome>.gff3/.gbk/.tbl/.proteins.fa/... (final)
     07_omark/          # <genome>.sum + OMArk plots/lists
+    08_ncbi/           # <genome>.sqn to upload, .gbf, .validation.txt (NCBI genomes only)
   final_summary.tsv
 ```
 
@@ -89,6 +93,11 @@ Edit `config/config.yaml`:
   leave it blank to keep geneML's native IDs. `busco_lineage` overrides
   `funannotate2.busco_lineage` (default `fungi`) for that genome, e.g.
   `sordariomycetes`, `eurotiomycetes`, `basidiomycota`.
+- `genomes:` NCBI keys - `ncbi_submission`, `bioproject`, `biosample`,
+  `keep_contigs`, `organelles`, `mito_gcode`; see
+  [NCBI submission](#ncbi-submission).
+- `ncbi:` - the submission template and table2asn settings, see
+  [NCBI submission](#ncbi-submission).
 - `geneml.version` - geneML release installed from PyPI (default `1.2.0`).
 - `funannotate2.addons_version` - funannotate2-addons release installed from
   PyPI (default `26.3.7`).
@@ -121,6 +130,7 @@ Every rule runs in one pinned image, set under `container:` in its rule file
 | `omark*` | `quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0` (OMAmer 2.1.2) |
 | `get_geneml`, `geneml` | `python:3.12-slim`; geneML is only on PyPI, so `get_geneml` installs it once into `resources/geneml-<version>/` |
 | `get_funannotate2_addons`, `external_annotations` | `python:3.12-slim`, same approach for funannotate2-addons (`resources/funannotate2-addons-<version>/`) |
+| `sequence_info`, `get_table2asn`, `ncbi_submission` | `python:3.12-slim`; `get_table2asn` downloads NCBI's table2asn binary once into `resources/table2asn-<version>/` and checks its sha256 |
 | `interproscan6` | none, see below |
 | `results_summary` | none (plain Python, runs in the Snakemake env) |
 
@@ -178,6 +188,89 @@ snakemake --profile profile --unlock
 **Resources** are set per rule in the `resources` dict at the top of the
 `Snakefile`. `runtime` is an integer number of minutes (Snakemake >= 8).
 
+## NCBI submission
+
+For genomes with `ncbi_submission` set, rule `ncbi_submission` builds
+`results/<genome>/08_ncbi/<genome>.sqn`, the file you upload to GenBank. It
+takes funannotate2 annotate's `.tbl` and the unmasked assembly, and runs
+NCBI's [table2asn](https://www.ncbi.nlm.nih.gov/genbank/table2asn/) in
+genome mode (`-M n`). This gives the validator messages and the
+discrepancy report. The rule **fails** if either has a problem that NCBI
+requires you to fix: an ERROR or REJECT validator message, or a FATAL
+discrepancy category. `08_ncbi/<genome>.validation.txt` summarises them,
+and table2asn's own `.val`/`.dr`/`.stats` files stay in
+`08_ncbi/table2asn/out/`. Set `ncbi.allow_errors: true` to get the `.sqn`
+anyway, for example to look at it before fixing things.
+
+**One-time setup.**
+
+1. Make a submission template (`.sbt`) at
+   <https://submit.ncbi.nlm.nih.gov/genbank/template/submission/> with
+   your contact details and author list. Save it as `config/template.sbt`
+   (`ncbi.sbt_template`). `config/*.sbt` is git-ignored because it holds
+   personal details.
+2. Every genome needs a BioProject, a BioSample and a registered
+   `locus_tag` prefix. NCBI assigns the prefix when you register the
+   BioSample under the BioProject.
+
+**Per genome** (under `genomes:`):
+
+- `ncbi_submission`:
+  - `"update"` adds this annotation to an existing, unannotated GenBank WGS
+    assembly. The genome must come from `ncbi_accessions`. The sequences
+    are named as NCBI's
+    [WGS update instructions](https://www.ncbi.nlm.nih.gov/genbank/wgs_update/)
+    ask: `gnl|WGS:<prefix>|<SeqID>|gb|<contig accession>`. Protein and
+    transcript IDs become `gnl|WGS:<prefix>|...`. Rule `sequence_info`
+    looks up these names from NCBI (Datasets API + E-utilities), so it
+    needs internet access. The assembly is not reordered or renamed, so
+    the coordinates match the GenBank records.
+  - `"new"` is for a genome that is not in GenBank yet. The `.sqn` is part
+    of a new WGS submission.
+- `bioproject`, `biosample`, `locus_tag` are required for NCBI genomes.
+  Snakemake checks this at start-up.
+- `keep_contigs: true` keeps the assembly's own sequence order and names.
+  This is implied by `"update"`. Without it, funannotate2 clean sorts the
+  contigs, drops duplicates and filters short ones.
+- `organelles: {contig_id: mitochondrion}` lists organelle sequences for
+  `"new"` genomes; `"update"` takes them from NCBI. Genes on organelle
+  sequences are dropped, because geneML predicts with the nuclear genetic
+  code. Those sequences are submitted unannotated, with
+  `[location=mitochondrion]` and `mgcode` = `mito_gcode` (default 4, the
+  mould/protozoan mitochondrial code; use 3 for yeasts).
+
+**Under `ncbi:`:**
+
+- `structured_comment` is an optional table2asn `-w` file, for example a
+  Genome-Assembly-Data comment for a `"new"` genome.
+- `gaps_min` / `linkage_evidence`: runs of at least this many Ns become
+  `assembly_gap` features with this evidence.
+- `extra` passes any other table2asn flags.
+
+table2asn runs with `-T`, so it looks the organism up in NCBI Taxonomy.
+This also needs internet access. Without it, table2asn applies bacterial
+checks.
+
+**Uploading.** Read the `.validation.txt` and the warnings in the `.val`
+file. Then also check
+`06_annotate/<genome>.need-curating.txt`, the gene names/products that
+funannotate2 flagged. Then submit the `.sqn`:
+
+- For `"update"`: the update route is through the
+  [Genome Submission Portal](https://submit.ncbi.nlm.nih.gov/subs/genome/)
+  ("update an existing submission"), or by emailing the `.sqn` to
+  genomes@ncbi.nlm.nih.gov with the assembly accession. NCBI's update page
+  covers changing the annotation of genomes that are already annotated.
+  Adding annotation for the first time is not described there, so ask
+  genomes@ncbi.nlm.nih.gov which route they want before uploading.
+- For `"new"`: create a new genome submission in the portal and give the
+  `.sqn` as the annotated sequence file.
+
+NCBI also screens new genomes for contamination with
+[FCS-GX](https://github.com/ncbi/fcs). It is not part of the pipeline
+because it needs about 500 GB of RAM. For a `"new"` genome, consider
+running it first.
+
 ## Notes / caveats
 
 - **Network access from compute nodes.** Besides the database rules,
@@ -185,7 +278,9 @@ snakemake --profile profile --unlock
   service on every run (failures are logged and ignored), and InterProScan6
   can look up precalculated matches online. The database rules
   (`antismash_database`, `funannotate2_database`, `omark_database`,
-  `interproscan6_setup`) need internet access.
+  `interproscan6_setup`, `get_table2asn`) need internet access, and so do
+  `sequence_info` for `"update"` genomes and `ncbi_submission`
+  (taxonomy lookup).
 - **funannotate2-addons fixes.** `workflow/scripts/fix_annotations.py`
   post-processes the funannotate2-addons (f2a 26.3.7) tables before
   `funannotate2 annotate` reads them: antiSMASH results are keyed by gene ID
@@ -195,9 +290,10 @@ snakemake --profile profile --unlock
   suffixes are stripped. The InterProScan6 TSV is parsed rather than the
   XML, because the XML groups identical proteins and f2a only reads the
   first ID of each group.
-- **No NCBI submission template.** funannotate2 runs table2asn without a
-  `.sbt` template, so `sbt_template` is gone. The `.tbl`/`.gbk` in
-  `06_annotate/` are a starting point for submission, not ready-made.
+- **06_annotate/ vs 08_ncbi/.** funannotate2 annotate runs table2asn
+  itself, with a placeholder submitter and without genome mode, so the
+  `.gbk` in `06_annotate/` is for reading, not for submission. Submit the
+  `.sqn` from `08_ncbi/`.
 - **Soft-masking** is tantan (funannotate2's own `softmask_fasta`, the same
   default as `funannotate mask`), which only masks low-complexity/tandem
   repeats. For repeat-rich genomes, consider masking with
