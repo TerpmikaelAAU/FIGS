@@ -1,0 +1,80 @@
+# =============================================================================
+# Genome inputs
+# =============================================================================
+# Any *.fna / *.fa / *.fasta file dropped in this directory is treated as an
+# already-assembled genome and staged into data/genomes/<filename>.fna
+# (extension stripped, everything before it becomes the {genome} wildcard).
+# Leave the directory empty (or non-existent) if you only want NCBI genomes.
+local_genome_dir: "data/local_assemblies"
+
+# Genomes to fetch with `datasets download genome accession ...`.
+# Leave as [] if you only want local assemblies.
+ncbi_accessions:
+  - "GCA_052058355.1"
+  - "GCA_052058325.1"
+
+# =============================================================================
+# Per-genome metadata used by `funannotate annotate`
+#
+# Key = the {genome} wildcard Snakemake will use for that genome, i.e.:
+#   - for NCBI genomes: the accession, e.g. GCA_052058355.1
+#   - for local genomes: the filename without its extension
+# Every genome needs an entry with at least `species`.
+#
+# `locus_tag` is OPTIONAL per genome. Leave it blank ("") or omit it and the
+# annotate step will skip `--rename`,
+# keeping geneML's own gene IDs (<genome>000001, ...) instead of NCBI locus_tags.
+# =============================================================================
+genomes:
+  GCA_052058355.1:
+    species: "Trichoderma asperellum"
+    strain: "TA1"
+    locus_tag: "AC6PBA"
+  GCA_052058325.1:
+    species: "Aspergillus oryzae var. oryzae"
+    strain: "CBS 466.91"
+    locus_tag: ""
+
+# NCBI .sbt submission template, used together with locus_tag renaming if you
+# intend to submit the annotation back to NCBI. Optional - leave "" to skip.
+sbt_template: "config/template.sbt"
+
+# =============================================================================
+# geneML (https://github.com/hexagonbio/geneML) - gene prediction
+# =============================================================================
+geneml:
+  version: "1.2.0"            # installed from PyPI into resources/geneml-<version>/
+  min_gene_score: "dynamic"   # float, or "dynamic" (needs >=100kb input)
+  extra: ""                   # any additional geneml flags, e.g. "--max-transcripts 1"
+
+# =============================================================================
+# antiSMASH - secondary metabolite / BGC prediction, seeded with geneML's
+# gene models via --genefinding-gff3
+# =============================================================================
+antismash:
+  database_dir: "data/databases/antismash"
+  extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
+
+# =============================================================================
+# InterProScan6 (https://github.com/ebi-pf-team/interproscan6), run through
+# Nextflow. Nextflow comes from the Snakemake env (Snakemake_env.yml) and
+# pulls InterProScan6's own images: `profile: apptainer` on the cluster,
+# `docker` on a machine with a Docker daemon.
+# =============================================================================
+interproscan6:
+  version: "6.0.1"                          # pin a release, don't float on 'latest'
+  profile: "apptainer"                      # Nextflow -profile: apptainer | singularity | docker
+  datadir: "data/databases/interproscan6"
+  container_cache: "data/databases/interproscan6_containers"   # images, pulled once, shared by every genome
+  formats: "xml,tsv,json,gff3"              # funannotate only needs xml
+  extra: ""
+
+# =============================================================================
+# funannotate - functional annotation, consuming geneML's GFF3 directly plus
+# the antiSMASH and InterProScan6 results
+# =============================================================================
+funannotate:
+  db_dir: "data/databases/funannotate"      # FUNANNOTATE_DB
+  busco_db: "fungi"
+  clean_minlen: 500
+  extra: ""
