@@ -1,60 +1,18 @@
 # =============================================================================
-# Genome inputs
-# =============================================================================
-# Any *.fna / *.fa / *.fasta file dropped in this directory is treated as an
-# already-assembled genome and staged into data/genomes/<filename>.fna
-# (extension stripped, everything before it becomes the {genome} wildcard).
-# Leave the directory empty (or non-existent) if you only want NCBI genomes.
-local_genome_dir: "data/local_assemblies"
-
-# Genomes to fetch with `datasets download genome accession ...`.
-# Leave as [] if you only want local assemblies.
-ncbi_accessions:
-  - "GCA_052058355.1"
-  - "GCA_052058325.1"
-
-# =============================================================================
-# Per-genome metadata used by `funannotate2 annotate`
-#
-# Key = the {genome} wildcard Snakemake will use for that genome, i.e.:
-#   - for NCBI genomes: the accession, e.g. GCA_052058355.1
-#   - for local genomes: the filename without its extension
-# Every genome needs an entry with at least `species`.
-#
-# `locus_tag` is OPTIONAL per genome, unless the genome is submitted to NCBI
-# (`ncbi_submission`, below). If set, gfftk renames the gene models
-# NCBI-style (<locus_tag>_000001, transcripts <locus_tag>_000001-T1) before
-# anything else uses them. Leave it blank ("") or omit it to keep geneML's
-# own IDs (<genome>000001, ...). For NCBI it must be the prefix registered
-# to the genome's BioProject/BioSample.
-#
-# `busco_lineage` is OPTIONAL per genome and overrides
-# funannotate2.busco_lineage below (e.g. eurotiomycetes, sordariomycetes,
-# basidiomycota, saccharomycetes).
-#
-# NCBI submission (OPTIONAL; see the `ncbi:` section further down):
-#   ncbi_submission: ""      - not submitted (default)
-#                    "update" - the assembly is already in GenBank without
-#                       annotation and is annotated as an update of that
-#                       record. Must be one of ncbi_accessions. The contigs
-#                       are kept exactly as deposited (funannotate2 clean is
-#                       skipped), and the submission uses NCBI's update
-#                       IDs, gnl|WGS:<prefix>|<your SeqID>|gb|<contig accession>,
-#                       which are looked up from NCBI automatically.
-#                       Organelle sequences are recognised from the NCBI
-#                       record and left unannotated.
-#                    "new"    - a new assembly with its annotation.
-#   bioproject / biosample: PRJNA... / SAMN..., written into the .sqn (DBLINK).
-#   keep_contigs: true - skip funannotate2 clean and keep the contigs and
-#                   their names as they are (always on for "update").
-#   organelles:   {<contig ID>: mitochondrion} - sequences left out of gene
-#                   prediction (geneML predicts nuclear genes) and labelled
-#                   as organelle in the submission. Needs keep_contigs, as
-#                   clean renames contigs. Filled in from NCBI for "update".
-#   mito_gcode:   genetic code of the mitochondrion (default 4, the
-#                   mold/protozoan code; 3 for yeasts such as Saccharomyces).
+# One entry per genome. The key is the genome's name in results/<name>/.
+#   fasta:   path to your assembly, or leave it out and use an NCBI assembly
+#            accession as the key to download that assembly
+#   species: required; strain, locus_tag, busco_lineage and the NCBI keys
+#            are optional
+# Tool settings have defaults (workflow/defaults.yaml). All options are in
+# README.md, under "Configuration".
 # =============================================================================
 genomes:
+  # my_strain:
+  #   fasta: "/path/to/my_strain.fna"
+  #   species: "Aspergillus niger"
+  #   strain: "ABC123"
+
   GCA_052058355.1:
     species: "Trichoderma asperellum"
     strain: "TA1"
@@ -63,6 +21,7 @@ genomes:
     ncbi_submission: "update"
     bioproject: "PRJNA1302126"
     biosample: "SAMN50462240"
+
   GCA_052058325.1:
     species: "Aspergillus oryzae var. oryzae"
     strain: "CBS 466.91"
@@ -71,96 +30,3 @@ genomes:
     ncbi_submission: "update"
     bioproject: "PRJNA1302126"
     biosample: "SAMN50462239"
-
-# =============================================================================
-# geneML (https://github.com/hexagonbio/geneML) - gene prediction
-# =============================================================================
-geneml:
-  version: "1.2.0"            # installed from PyPI into resources/geneml-<version>/
-  min_gene_score: "dynamic"   # float, or "dynamic" (needs >=100kb input)
-  extra: ""                   # any additional geneml flags, e.g. "--max-transcripts 1"
-
-# =============================================================================
-# antiSMASH - secondary metabolite / BGC prediction, seeded with geneML's
-# gene models via --genefinding-gff3
-# =============================================================================
-antismash:
-  database_dir: "data/databases/antismash"
-  extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
-
-# =============================================================================
-# InterProScan6 (https://github.com/ebi-pf-team/interproscan6), run through
-# Nextflow. Nextflow comes from the Snakemake env (Snakemake_env.yml) and
-# pulls InterProScan6's own images: `profile: apptainer` on the cluster,
-# `docker` on a machine with a Docker daemon.
-# =============================================================================
-interproscan6:
-  version: "6.0.1"                          # pin a release, don't float on 'latest'
-  # InterPro data release. Pinned for reproducibility, and so a new release
-  # doesn't make every genome job download it into datadir at the same time.
-  # Releases compatible with 6.0.x are listed at
-  # https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json
-  interpro_version: "110.0"
-  profile: "apptainer"                      # Nextflow -profile: apptainer | singularity | docker
-  datadir: "data/databases/interproscan6"
-  container_cache: "data/databases/interproscan6_containers"   # images, pulled once, shared by every genome
-  formats: "xml,tsv,json,gff3"              # tsv is always written (funannotate2 reads it)
-  goterms: true                             # GO terms (off by default in InterProScan6)
-  pathways: true                            # MetaCyc/Reactome pathways (also off by default)
-  extra: ""
-
-# =============================================================================
-# funannotate2 (https://github.com/nextgenusfs/funannotate2) - contig
-# cleanup, soft-masking and functional annotation, consuming the gene models
-# plus the antiSMASH and InterProScan6 results
-# =============================================================================
-funannotate2:
-  db_dir: "data/databases/funannotate2"     # FUNANNOTATE2_DB
-  busco_lineage: "fungi"                    # default; per-genome busco_lineage overrides it
-  clean_minlen: 500                         # drop contigs shorter than this
-  addons_version: "26.3.7"                  # funannotate2-addons, from PyPI into resources/
-  extra: ""                                 # extra `funannotate2 annotate` flags
-
-# =============================================================================
-# OMArk (https://github.com/DessimozLab/OMArk) - proteome completeness and
-# consistency against OMA orthologous groups
-# =============================================================================
-omark:
-  db_dir: "data/databases/omark"
-  # OMAmer LUCA.h5 (~10 GB), OMA release May 2026, built with OMAmer 2.1.0.
-  # Pinned to its Zenodo record rather than omabrowser.org/All/LUCA.h5,
-  # which moves to each new release.
-  db_url: "https://zenodo.org/records/20814376/files/LUCA.h5?download=1"
-  db_md5: "87a322a0a6381a8de0b539d62e277054"   # "" to skip the check
-  extra: ""
-
-# =============================================================================
-# NCBI GenBank submission (genomes with `ncbi_submission` set)
-#
-# funannotate2 annotate already runs table2asn, but with a placeholder
-# submitter and without genome-mode checks, so its .gbk is not submittable.
-# Rule ncbi_submission re-runs table2asn (pinned NCBI release) on its .tbl
-# with your template, and fails if NCBI's validator reports errors or the
-# discrepancy report has FATAL items. Upload results/<genome>/08_ncbi/<genome>.sqn.
-# =============================================================================
-ncbi:
-  # Submission template with your contact details and the citation, made
-  # with https://submit.ncbi.nlm.nih.gov/genbank/template/submission/
-  # (git-ignored: it holds personal details). Required for submission.
-  sbt_template: "config/template.sbt"
-  # Optional structured comment file (table2asn -w), e.g. a
-  # ##Genome-Assembly-Data-START## / ##Genome-Annotation-Data-START## block.
-  structured_comment: ""
-  # Runs of Ns this long or longer become assembly_gap features, with this
-  # linkage evidence (only matters for gapped assemblies).
-  gaps_min: 10
-  linkage_evidence: "paired-ends"
-  # true: let the rule finish even when the validator reports errors or FATAL
-  # discrepancies (the report still lists them).
-  allow_errors: false
-  extra: ""                                 # extra table2asn flags
-  # table2asn from NCBI (bioconda's is a release behind), installed into
-  # resources/ by rule get_table2asn and checked against this checksum.
-  table2asn_version: "1.29.324"
-  table2asn_url: "https://ftp.ncbi.nlm.nih.gov/asn1-converters/versions/2025-09-16/by_program/table2asn/linux64.table2asn.gz"
-  table2asn_sha256: "785bed9880856b208ed84d9765ca094b7c7d12d2225781c2a1854b650d3984bf"
