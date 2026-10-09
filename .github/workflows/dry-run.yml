@@ -1,0 +1,28 @@
+# Cheap safety net for every push and PR: does the workflow still parse and
+# build its job graph? Runs no tools and needs no cluster -- `snakemake -n`
+# only plans the jobs.
+name: dry-run
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Snakemake
+        # Same version as Snakemake_env.yml
+        run: pip install snakemake==9.26.1
+
+      - name: Python scripts compile
+        run: python -m py_compile workflow/scripts/*.py
+
+      - name: Dry-run, default config
+        run: snakemake -n --cores 1 --quiet rules
