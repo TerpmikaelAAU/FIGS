@@ -96,6 +96,11 @@ antismash:
 # =============================================================================
 interproscan6:
   version: "6.0.1"                          # pin a release, don't float on 'latest'
+  # InterPro data release. Pinned for reproducibility, and so a new release
+  # doesn't make every genome job download it into datadir at the same time.
+  # Releases compatible with 6.0.x are listed at
+  # https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json
+  interpro_version: "110.0"
   profile: "apptainer"                      # Nextflow -profile: apptainer | singularity | docker
   datadir: "data/databases/interproscan6"
   container_cache: "data/databases/interproscan6_containers"   # images, pulled once, shared by every genome
