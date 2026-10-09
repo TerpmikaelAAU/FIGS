@@ -1,14 +1,17 @@
 # -----------------------------------------------------------------------------
-# One-line-per-genome summary (gene count, BGC count, locus_tag status, ...)
+# One-line-per-genome summary: gene counts, BGC regions, InterProScan6
+# coverage, OMArk completeness/consistency, locus_tag status, ...
 # -----------------------------------------------------------------------------
 rule results_summary:
     input:
-        expand("results/{genome}/06_annotate/{genome}.annotate.done", genome=GENOMES),
+        gff3 = expand("results/{genome}/06_annotate/{genome}.gff3", genome=GENOMES),
+        omark = expand("results/{genome}/07_omark/{genome}.sum", genome=GENOMES),
     output:
         tsv = "results/final_summary.tsv",
     params:
         genomes = GENOMES,
         genome_config = config["genomes"],
+        busco_lineages = {g: busco_lineage(g) for g in GENOMES},
     log:
         "logs/results_summary.log",
     resources:

@@ -14,30 +14,33 @@ ncbi_accessions:
   - "GCA_052058325.1"
 
 # =============================================================================
-# Per-genome metadata used by `funannotate annotate`
+# Per-genome metadata used by `funannotate2 annotate`
 #
 # Key = the {genome} wildcard Snakemake will use for that genome, i.e.:
 #   - for NCBI genomes: the accession, e.g. GCA_052058355.1
 #   - for local genomes: the filename without its extension
 # Every genome needs an entry with at least `species`.
 #
-# `locus_tag` is OPTIONAL per genome. Leave it blank ("") or omit it and the
-# annotate step will skip `--rename`,
-# keeping geneML's own gene IDs (<genome>000001, ...) instead of NCBI locus_tags.
+# `locus_tag` is OPTIONAL per genome. If set, gfftk renames the gene models
+# NCBI-style (<locus_tag>_000001, transcripts <locus_tag>_000001-T1) before
+# anything else uses them. Leave it blank ("") or omit it to keep geneML's
+# own IDs (<genome>000001, ...).
+#
+# `busco_lineage` is OPTIONAL per genome and overrides
+# funannotate2.busco_lineage below (e.g. eurotiomycetes, sordariomycetes,
+# basidiomycota, saccharomycetes).
 # =============================================================================
 genomes:
   GCA_052058355.1:
     species: "Trichoderma asperellum"
     strain: "TA1"
     locus_tag: "AC6PBA"
+    busco_lineage: "sordariomycetes"
   GCA_052058325.1:
     species: "Aspergillus oryzae var. oryzae"
     strain: "CBS 466.91"
     locus_tag: ""
-
-# NCBI .sbt submission template, used together with locus_tag renaming if you
-# intend to submit the annotation back to NCBI. Optional - leave "" to skip.
-sbt_template: "config/template.sbt"
+    busco_lineage: "eurotiomycetes"
 
 # =============================================================================
 # geneML (https://github.com/hexagonbio/geneML) - gene prediction
@@ -66,15 +69,32 @@ interproscan6:
   profile: "apptainer"                      # Nextflow -profile: apptainer | singularity | docker
   datadir: "data/databases/interproscan6"
   container_cache: "data/databases/interproscan6_containers"   # images, pulled once, shared by every genome
-  formats: "xml,tsv,json,gff3"              # funannotate only needs xml
+  formats: "xml,tsv,json,gff3"              # tsv is always written (funannotate2 reads it)
+  goterms: true                             # GO terms (off by default in InterProScan6)
+  pathways: true                            # MetaCyc/Reactome pathways (also off by default)
   extra: ""
 
 # =============================================================================
-# funannotate - functional annotation, consuming geneML's GFF3 directly plus
-# the antiSMASH and InterProScan6 results
+# funannotate2 (https://github.com/nextgenusfs/funannotate2) - contig
+# cleanup, soft-masking and functional annotation, consuming the gene models
+# plus the antiSMASH and InterProScan6 results
 # =============================================================================
-funannotate:
-  db_dir: "data/databases/funannotate"      # FUNANNOTATE_DB
-  busco_db: "fungi"
-  clean_minlen: 500
+funannotate2:
+  db_dir: "data/databases/funannotate2"     # FUNANNOTATE2_DB
+  busco_lineage: "fungi"                    # default; per-genome busco_lineage overrides it
+  clean_minlen: 500                         # drop contigs shorter than this
+  addons_version: "26.3.7"                  # funannotate2-addons, from PyPI into resources/
+  extra: ""                                 # extra `funannotate2 annotate` flags
+
+# =============================================================================
+# OMArk (https://github.com/DessimozLab/OMArk) - proteome completeness and
+# consistency against OMA orthologous groups
+# =============================================================================
+omark:
+  db_dir: "data/databases/omark"
+  # OMAmer LUCA.h5 (~10 GB), OMA release May 2026, built with OMAmer 2.1.0.
+  # Pinned to its Zenodo record rather than omabrowser.org/All/LUCA.h5,
+  # which moves to each new release.
+  db_url: "https://zenodo.org/records/20814376/files/LUCA.h5?download=1"
+  db_md5: "87a322a0a6381a8de0b539d62e277054"   # "" to skip the check
   extra: ""

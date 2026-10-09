@@ -1,12 +1,13 @@
 # -----------------------------------------------------------------------------
-# antiSMASH, seeded with geneML's gene models via --genefinding-gff3 so it
-# doesn't re-call genes itself (--genefinding-tool none). Produces a GenBank
-# file with BGC annotations that funannotate later consumes via --antismash.
+# antiSMASH, seeded with the gene models via --genefinding-gff3 so it doesn't
+# re-call genes itself (--genefinding-tool none). Produces a GenBank file
+# with BGC annotations, which rule external_annotations turns into
+# funannotate2 annotation tables.
 # -----------------------------------------------------------------------------
 rule antismash:
     input:
-        genome = rules.funannotate_mask.output,
-        gff3 = rules.geneml.output.gff3,
+        genome = rules.softmask.output,
+        gff3 = rules.gene_models.output.gff3,
         db_marker = "data/databases/antismashdatabase",
     output:
         out_dir = directory("results/{genome}/03_antismash"),
