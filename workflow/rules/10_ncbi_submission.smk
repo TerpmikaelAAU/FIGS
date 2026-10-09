@@ -38,9 +38,8 @@ rule get_table2asn:
     shell:
         r"""
         mkdir -p {params.dir}
-        python -c "import sys, urllib.request
-urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "{params.url}" {params.dir}/table2asn.gz > {log} 2>&1
-        echo "{params.sha256}  {params.dir}/table2asn.gz" | sha256sum -c - >> {log} 2>&1
+        python workflow/scripts/download.py "{params.url}" {params.dir}/table2asn.gz \
+            --sha256 {params.sha256} > {log} 2>&1
         gunzip -f {params.dir}/table2asn.gz
         chmod +x {output.table2asn}
         {output.table2asn} -version >> {log} 2>&1
