@@ -1,0 +1,13 @@
+name: snakemake_figs
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - snakemake=9.26.1
+  - snakemake-executor-plugin-slurm=2.8.0
+  - snakefmt=0.11.0
+  # InterProScan6 is a Nextflow pipeline that runs on the host (see
+  # workflow/rules/6_interproscan6.smk), so Nextflow lives in this env.
+  - nextflow=26.04.7
+  - openjdk=21

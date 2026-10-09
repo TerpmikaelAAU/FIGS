@@ -1,0 +1,43 @@
+# Snakemake >=8 profile for the AAU BioCloud cluster, same setup as the T2T
+# pipeline. Submission is handled by the native SLURM executor plugin.
+executor: slurm
+
+# Each rule runs in a container (see README "Containers"). Keep "apptainer"
+# as the only entry -- adding "conda" here breaks the containers.
+software-deployment-method:
+  - apptainer
+
+# Defaults for any rule that does not set them itself.
+# NOTE: `runtime` is an INTEGER NUMBER OF MINUTES in Snakemake >=8.
+# BioCloud assigns partitions automatically from the mem-per-CPU ratio,
+# so slurm_partition is deliberately NOT set here.
+default-resources:
+  runtime: 60
+  mem_mb: 512
+  qos: "normal"
+
+max-threads: 64
+# HARD CAP on how many jobs can be in SLURM at once.
+jobs: 20
+# Threads for rules that run locally (none currently do, but this bounds it).
+local-cores: 1
+# Ceph/NFS can lag between a job finishing and its output being visible on
+# the submitting node; this is how long Snakemake waits before deciding an
+# expected output is actually missing.
+latency-wait: 120
+# Print a failed job's log files (the rule's log: and its SLURM log) straight
+# into the Snakemake output, instead of only naming them.
+show-failed-logs: true
+# Submission RATE limit -- protects the scheduler from a burst.
+max-jobs-per-second: 5
+max-status-checks-per-second: 5
+# Keep annotating the other genomes when one fails.
+keep-going: True
+# A job killed mid-write (OOM, node failure, a manual scancel) leaves its
+# output marked "incomplete"; re-run those instead of erroring out.
+rerun-incomplete: True
+printshellcmds: False
+
+# Plugin conveniences
+slurm-keep-successful-logs: True
+slurm-efficiency-report: True
