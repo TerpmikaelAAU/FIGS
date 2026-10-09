@@ -12,6 +12,8 @@ set -euo pipefail
 
 mkdir -p snake_log
 
+# Any env with Snakemake >= 9 and the SLURM executor plugin works (the one
+# made from Snakemake_env.yml is snakemake_figs); change the name to yours.
 conda activate snakemake_figs
 
 # Snakemake itself needs almost nothing: it submits each rule as its own

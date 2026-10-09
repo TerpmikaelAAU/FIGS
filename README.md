@@ -36,7 +36,7 @@ NCBI submission (table2asn, validated)   only for genomes with ncbi_submission s
 
 ```
 Snakefile
-Snakemake_env.yml      # Snakemake 9.26.1 + SLURM plugin + Nextflow
+Snakemake_env.yml      # Snakemake 9.26.1 + SLURM plugin
 slurm_submit.sbatch    # runs the whole workflow as one small SLURM job
 config/
   config.yaml          # your genomes (edit this)
@@ -71,9 +71,11 @@ results/
 conda env create -f Snakemake_env.yml
 conda activate snakemake_figs
 ```
-This pins Snakemake 9.26.1 (the same as the T2T pipeline), the native SLURM
-executor plugin, and Nextflow + Java for InterProScan6. The pipeline needs
-Snakemake >= 9; it will not run under Snakemake 7.
+This pins Snakemake 9.26.1 (the same as the T2T pipeline) and the native
+SLURM executor plugin. Any env with Snakemake >= 9 and the SLURM executor
+plugin works too; the pipeline will not run under Snakemake 7. Every tool,
+including Nextflow and Java for InterProScan6, comes from a container or is
+installed by the pipeline itself.
 
 **2. Apptainer** must be available on the compute nodes (it is on BioCloud).
 Every rule's container is pulled automatically the first time it's needed.
@@ -159,9 +161,17 @@ funannotate2:
   takes its GO annotation from them.
 - `extra`: any other InterProScan6 flags.
 
+**`nextflow`**
+- `version` / `url` / `sha256` (`26.04.7`) and `java_url` / `java_sha256`
+  (Eclipse Temurin 21): the Nextflow and Java that InterProScan6 runs with,
+  downloaded once into `resources/nextflow-<version>/` by rule
+  `get_nextflow` and checked against their sha256.
+
 **`funannotate2`**
 - `db_dir` (`data/databases/funannotate2`): `FUNANNOTATE2_DB`, filled by
-  rule `funannotate2_database`.
+  rule `funannotate2_database` (every database except the RefSeq
+  mitochondrial one, which only `funannotate2 predict` uses and which needs
+  minimap2, not in the container).
 - `busco_lineage` (`fungi`): the default lineage; a genome's own
   `busco_lineage` overrides it.
 - `clean_minlen` (`500`): funannotate2 clean drops contigs shorter than
@@ -202,21 +212,23 @@ Every rule runs in one pinned image, set under `container:` in its rule file
 
 | Rules | Image |
 |---|---|
-| `prepare_genome` | `staphb/ncbi-datasets:18.37.0` (NCBI `datasets` is not on bioconda) |
+| `download_genome` | `staphb/ncbi-datasets:18.37.0` (NCBI `datasets` is not on bioconda) |
+| `stage_genome` | none: it only copies your assembly in, and without a container it can read it from anywhere |
 | `funannotate2_*`, `softmask`, `gene_models` | `quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0` (includes gfftk) |
 | `antismash*` | `quay.io/biocontainers/antismash:8.0.4--pyhdfd78af_1` |
 | `omark*` | `quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0` (OMAmer 2.1.2) |
 | `get_geneml`, `geneml` | `python:3.12-slim`; geneML is only on PyPI, so `get_geneml` installs it once into `resources/geneml-<version>/` |
 | `get_funannotate2_addons`, `external_annotations` | `python:3.12-slim`, same approach for funannotate2-addons (`resources/funannotate2-addons-<version>/`) |
-| `sequence_info`, `get_table2asn`, `ncbi_submission` | `python:3.12-slim`; `get_table2asn` downloads NCBI's table2asn binary once into `resources/table2asn-<version>/` and checks its sha256 |
-| `interproscan6` | none, see below |
+| `sequence_info`, `get_table2asn`, `get_nextflow`, `ncbi_submission` | `python:3.12-slim`; `get_table2asn` downloads NCBI's table2asn binary once into `resources/table2asn-<version>/` and checks its sha256; `get_nextflow` does the same for Nextflow and Java (`resources/nextflow-<version>/`) |
+| `interproscan6_setup`, `interproscan6` | none, see below |
 | `results_summary` | none (plain Python, runs in the Snakemake env) |
 
 **InterProScan6** is a Nextflow pipeline that starts its own container for
 every analysis step, so it is the one rule without a `container:` (wrapping
 it would mean Apptainer-in-Apptainer). It runs on the compute node with the
-Nextflow from `Snakemake_env.yml`, which the SLURM jobs inherit from the
-environment Snakemake was started in. Each genome gets its own Nextflow
+pinned Nextflow and Java that rule `get_nextflow` installs into
+`resources/`, so it doesn't matter which env Snakemake is started from.
+Each genome gets its own Nextflow
 launch directory under `data/interproscan6_runs/`, removed after a
 successful run. Before the first genome, rule `interproscan6_setup` runs
 InterProScan6's own test once, which fetches the pipeline, pulls its images
@@ -232,10 +244,11 @@ Docker image, which bakes a read-only `FUNANNOTATE2_DB` into the image;
 funannotate2 needs to write BUSCO lineages into that directory.
 
 Databases and outputs are inside the working directory, which Snakemake binds
-into every container. Anything you point at outside it -- a genome's `fasta`,
-`funannotate2.db_dir`, `antismash.database_dir`, `omark.db_dir` -- must be bound too, e.g.
-`--apptainer-args "--bind /shared/databases,/path/to/assemblies"` (or
-`apptainer-args:` in `profile/config.yaml`).
+into every container. A database directory you point at outside it --
+`funannotate2.db_dir`, `antismash.database_dir`, `omark.db_dir` -- must be
+bound too, e.g. `--apptainer-args "--bind /shared/databases"` (or
+`apptainer-args:` in `profile/config.yaml`). A genome's `fasta` can be
+anywhere: `stage_genome` copies it in without a container.
 
 ## Run
 
@@ -353,9 +366,15 @@ running it first.
   service on every run (failures are logged and ignored), and InterProScan6
   can look up precalculated matches online. The database rules
   (`antismash_database`, `funannotate2_database`, `omark_database`,
-  `interproscan6_setup`, `get_table2asn`) need internet access, and so do
-  `sequence_info` for `"update"` genomes and `ncbi_submission`
-  (taxonomy lookup).
+  `interproscan6_setup`, `get_nextflow`, `get_table2asn`) need internet
+  access, and so do `download_genome`, `sequence_info` for `"update"`
+  genomes and `ncbi_submission` (taxonomy lookup).
+- **Downloads resume.** The OMAmer database, table2asn, Nextflow and Java
+  are fetched by `workflow/scripts/download.py`, which picks up where it
+  left off when the connection drops, keeps the partial file as
+  `<file>.part` so a re-run of the rule resumes it too, and checks the
+  checksum before using it. `omark_database` may take hours: Zenodo can be
+  slow, and `LUCA.h5` is ~10 GB.
 - **funannotate2-addons fixes.** `workflow/scripts/fix_annotations.py`
   post-processes the funannotate2-addons (f2a 26.3.7) tables before
   `funannotate2 annotate` reads them: antiSMASH results are keyed by gene ID

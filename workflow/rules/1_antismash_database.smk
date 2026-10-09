@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------------------
 # One-off, shared antiSMASH database download. All per-genome antismash rules
-# depend on the marker file this rule produces.
+# depend on the marker file this rule produces. PYTHONUNBUFFERED so the
+# log shows how far it got even if the job is killed.
 # -----------------------------------------------------------------------------
 rule antismash_database:
     output:
@@ -19,5 +20,5 @@ rule antismash_database:
     shell:
         r"""
         mkdir -p {params.db_dir}
-        download-antismash-databases --database-dir {params.db_dir} > {log} 2>&1
+        PYTHONUNBUFFERED=1 download-antismash-databases --database-dir {params.db_dir} > {log} 2>&1
         """

@@ -37,12 +37,10 @@ rule omark_database:
     shell:
         r"""
         mkdir -p {params.db_dir}
-        python -c "import sys, urllib.request
-urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "{params.url}" {output.db}.tmp > {log} 2>&1
-        if [ -n "{params.md5}" ]; then
-            echo "{params.md5}  {output.db}.tmp" | md5sum -c - >> {log} 2>&1
-        fi
-        mv {output.db}.tmp {output.db}
+        # Resumes after dropped connections (and across re-runs, from
+        # LUCA.h5.part); an empty md5 skips the check.
+        python workflow/scripts/download.py "{params.url}" {output.db} \
+            --md5 "{params.md5}" > {log} 2>&1
 
         # ete3 downloads taxdump.tar.gz into the working directory.
         cd {params.db_dir}

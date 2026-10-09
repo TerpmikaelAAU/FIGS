@@ -1,8 +1,13 @@
 # -----------------------------------------------------------------------------
 # One-off, shared funannotate2 database setup (Pfam, dbCAN, MEROPS,
-# UniProtKB/Swiss-Prot, GO, MIBiG, InterPro, gene2product, ...). Every
+# UniProtKB/Swiss-Prot, GO, MIBiG, InterPro, gene2product). Every
 # funannotate2 subcommand elsewhere in the workflow points FUNANNOTATE2_DB at
 # this same directory (set once via shell.prefix() in the Snakefile).
+#
+# `install -d all` would also build the RefSeq mitochondrial database, which
+# needs minimap2 (not in the funannotate2 container) and is only used by
+# `funannotate2 predict` to set mitochondrial contigs aside. FIGS predicts
+# genes with geneML instead, so that database is left out.
 #
 # funannotate2 annotate downloads its BUSCO lineage into FUNANNOTATE2_DB the
 # first time it needs it. Every lineage the config uses (BUSCO_LINEAGES) is
@@ -27,7 +32,7 @@ rule funannotate2_database:
     shell:
         r"""
         mkdir -p {params.db_dir}
-        funannotate2 install -d all > {log} 2>&1
+        funannotate2 install -d merops uniprot dbCAN pfam go mibig interpro gene2product > {log} 2>&1
 
         for lineage in {params.lineages}; do
             python -c "import logging, sys

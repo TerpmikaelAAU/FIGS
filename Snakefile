@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 from snakemake.utils import min_version
 
 min_version("9.0")
@@ -25,9 +24,10 @@ configfile: "config/config.yaml"
 GB = 1024
 
 resources = {
-    "prepare_genome":          {"mem_mb": 4  * GB, "runtime": 120},
+    "stage_genome":            {"mem_mb": 1  * GB, "runtime": 30},
+    "download_genome":         {"mem_mb": 4  * GB, "runtime": 120},
     "sequence_info":           {"mem_mb": 2  * GB, "runtime": 30},
-    "antismash_database":      {"mem_mb": 4  * GB, "runtime": 240},
+    "antismash_database":      {"mem_mb": 16 * GB, "runtime": 240},
     "funannotate2_database":   {"mem_mb": 8  * GB, "runtime": 360},
     "funannotate2_clean":      {"mem_mb": 8  * GB, "runtime": 60},
     "softmask":                {"mem_mb": 8  * GB, "runtime": 120},
@@ -35,12 +35,13 @@ resources = {
     "geneml":                  {"mem_mb": 32 * GB, "runtime": 180},
     "gene_models":             {"mem_mb": 4  * GB, "runtime": 30},
     "antismash":               {"mem_mb": 32 * GB, "runtime": 360},
+    "get_nextflow":            {"mem_mb": 2  * GB, "runtime": 30},
     "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 360},
     "interproscan6":           {"mem_mb": 32 * GB, "runtime": 360},
     "get_funannotate2_addons": {"mem_mb": 4  * GB, "runtime": 60},
     "external_annotations":    {"mem_mb": 4  * GB, "runtime": 30},
     "funannotate2_annotate":   {"mem_mb": 16 * GB, "runtime": 240},
-    "omark_database":          {"mem_mb": 4  * GB, "runtime": 360},
+    "omark_database":          {"mem_mb": 4  * GB, "runtime": 1440},
     "omark":                   {"mem_mb": 32 * GB, "runtime": 120},
     "get_table2asn":           {"mem_mb": 2  * GB, "runtime": 30},
     "ncbi_submission":         {"mem_mb": 16 * GB, "runtime": 120},
@@ -53,8 +54,8 @@ resources = {
 # apptainer). The conda envs under workflow/envs/ list the same tool+version,
 # for reference or for running with --software-deployment-method conda.
 # InterProScan6 is the exception: it is a Nextflow pipeline that starts its
-# own containers, so it runs on the host with Nextflow from the Snakemake
-# env (see 6_interproscan6.smk).
+# own containers, so it runs on the host with a pinned Nextflow + Java
+# (NEXTFLOW_DIR below; see 6_interproscan6.smk).
 # -----------------------------------------------------------------------------
 NCBI_DATASETS_CONTAINER = "docker://staphb/ncbi-datasets:18.37.0"
 FUNANNOTATE2_CONTAINER  = "docker://quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0"
@@ -62,10 +63,10 @@ ANTISMASH_CONTAINER     = "docker://quay.io/biocontainers/antismash:8.0.4--pyhdf
 OMARK_CONTAINER         = "docker://quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0"
 PYTHON_CONTAINER        = "docker://python:3.12-slim"
 
-# The Snakemake env's bin/ (Nextflow + Java live there), put on PATH by the
-# InterProScan6 rules so they don't rely on SLURM passing the login shell's
-# PATH on to the job.
-SNAKEMAKE_ENV_BIN = os.path.dirname(sys.executable)
+# Nextflow + Java (Eclipse Temurin) for InterProScan6, pinned releases
+# installed once into resources/ by rule get_nextflow, so InterProScan6
+# doesn't depend on the env Snakemake is started from.
+NEXTFLOW_DIR = os.path.abspath(f"resources/nextflow-{config['nextflow']['version']}")
 
 # geneML is only on PyPI (no container), so rule get_geneml installs it once
 # into resources/ inside the python image, and geneml runs from there.
@@ -117,7 +118,7 @@ def keep_contigs(genome):
 # One per entry under genomes: in the config. An entry with `fasta` is a
 # local assembly; one without is downloaded from NCBI, with its key as the
 # assembly accession. Each is staged as data/genomes/{genome}.fna by rule
-# prepare_genome.
+# stage_genome (local) or download_genome (NCBI).
 # -----------------------------------------------------------------------------
 GENOMES = list(config.get("genomes") or {})
 if not GENOMES:
