@@ -39,15 +39,15 @@ Snakefile
 Snakemake_env.yml      # Snakemake 9.26.1 + SLURM plugin + Nextflow
 slurm_submit.sbatch    # runs the whole workflow as one small SLURM job
 config/
-  config.yaml          # edit this
+  config.yaml          # your genomes (edit this)
 profile/
   config.yaml          # BioCloud SLURM executor profile
 workflow/
+  defaults.yaml        # default tool settings (override them in config/config.yaml)
   rules/               # 0_ ... 10_, one stage per file
   envs/                # tool+version reference (see "Containers")
   scripts/             # fix_annotations.py, summarize_results.py, NCBI scripts
 data/
-  local_assemblies/    # drop your own *.fna/*.fa/*.fasta here (optional)
   genomes/             # staged, unified input (created by the pipeline)
   databases/           # antiSMASH / funannotate2 / InterProScan6 / OMArk DBs
 resources/             # geneML, funannotate2-addons, table2asn (created by the pipeline)
@@ -78,49 +78,122 @@ Snakemake >= 9; it will not run under Snakemake 7.
 **2. Apptainer** must be available on the compute nodes (it is on BioCloud).
 Every rule's container is pulled automatically the first time it's needed.
 
-## Configure
+## Configuration
 
-Edit `config/config.yaml`:
+`config/config.yaml` lists the genomes to annotate, one entry each. That is
+all a run needs; every tool setting has a default in
+`workflow/defaults.yaml`.
 
-- `local_genome_dir` / `ncbi_accessions` - your genome inputs. Both can be
-  used together. The genome list is read when Snakemake starts, so a dry run
-  (`-n`) shows every genome's jobs.
-- `genomes:` - per-genome `species`, `strain`, and **optional** `locus_tag`
-  and `busco_lineage`. Every genome needs an entry here (at least
-  `species`); Snakemake stops at start-up and names the genome if one is
-  missing. Set `locus_tag` to have `gfftk rename` give the gene models
-  NCBI-style IDs (`LOCUSTAG_000001`, transcripts `LOCUSTAG_000001-T1`);
-  leave it blank to keep geneML's native IDs. `busco_lineage` overrides
-  `funannotate2.busco_lineage` (default `fungi`) for that genome, e.g.
-  `sordariomycetes`, `eurotiomycetes`, `basidiomycota`.
-- `genomes:` NCBI keys - `ncbi_submission`, `bioproject`, `biosample`,
-  `keep_contigs`, `organelles`, `mito_gcode`; see
-  [NCBI submission](#ncbi-submission).
-- `ncbi:` - the submission template and table2asn settings, see
-  [NCBI submission](#ncbi-submission).
-- `geneml.version` - geneML release installed from PyPI (default `1.2.0`).
-- `funannotate2.addons_version` - funannotate2-addons release installed from
-  PyPI (default `26.3.7`).
-- `antismash.database_dir` / `interproscan6.datadir` / `funannotate2.db_dir`
-  / `omark.db_dir` - where the (large, shared) reference databases live.
-  Downloaded once by rules `antismash_database` / `funannotate2_database` /
-  `omark_database`; InterProScan6 fetches its own data into `datadir` on
-  first run.
-- `omark.db_url` / `omark.db_md5` - the OMAmer database (`LUCA.h5`, ~10 GB),
-  pinned to a Zenodo release (OMA May 2026) and checked against its md5.
-- `interproscan6.interpro_version` - the InterPro data release (default
-  `110.0`, the newest compatible with InterProScan 6.0.x). It is pinned so
-  results are reproducible, and so a new InterPro release doesn't make every
-  genome job download it at once. Changing it re-runs
+```yaml
+genomes:
+  my_strain:                          # name used in results/my_strain/
+    fasta: "/path/to/my_strain.fna"   # your assembly
+    species: "Aspergillus niger"
+    strain: "ABC123"
+
+  GCA_052058355.1:                    # no fasta: downloaded from NCBI
+    species: "Trichoderma asperellum"
+    strain: "TA1"
+```
+
+The genome list is read when Snakemake starts, so a dry run (`-n`) shows
+every genome's jobs, and a missing species, a FASTA path that doesn't exist
+or a malformed NCBI setting stops the run at start-up with the genome named.
+
+### Per-genome keys
+
+| Key | |
+|---|---|
+| `fasta` | Path to the assembly (`.fna`/`.fa`/`.fasta`). Leave it out to download the assembly from NCBI; the genome's name must then be its assembly accession (`GCA_...`/`GCF_...`). |
+| `species` | Required. Used by funannotate2 annotate and in the NCBI submission. |
+| `strain` | Optional. |
+| `locus_tag` | Optional (required for NCBI submission). `gfftk rename` gives the gene models NCBI-style IDs (`LOCUSTAG_000001`, transcripts `LOCUSTAG_000001-T1`). Without it, geneML's own IDs are kept. For NCBI it must be the prefix registered to the genome's BioSample. |
+| `busco_lineage` | Optional, overrides `funannotate2.busco_lineage` (default `fungi`), e.g. `sordariomycetes`, `eurotiomycetes`, `basidiomycota`, `saccharomycetes`. |
+| `ncbi_submission`, `bioproject`, `biosample`, `keep_contigs`, `organelles`, `mito_gcode` | NCBI submission, see [NCBI submission](#ncbi-submission). |
+
+### Changing a default
+
+Repeat the setting under its section in `config/config.yaml`; settings you
+don't repeat keep their default. For example, to run InterProScan6 with
+Docker and keep shorter contigs:
+
+```yaml
+interproscan6:
+  profile: "docker"
+funannotate2:
+  clean_minlen: 200
+```
+
+**`geneml`**
+- `version` (`1.2.0`): geneML release, installed from PyPI into
+  `resources/geneml-<version>/`.
+- `min_gene_score` (`dynamic`): a number, or `dynamic` (needs at least
+  100 kb of sequence).
+- `extra`: any other geneml flags.
+
+**`antismash`**
+- `database_dir` (`data/databases/antismash`): downloaded once by rule
+  `antismash_database`.
+- `extra` (`--cb-general --cb-knownclusters --cb-subclusters --asf
+  --pfam2go --rre`): extra antiSMASH analyses and flags.
+
+**`interproscan6`**
+- `version` (`6.0.1`): InterProScan6 release.
+- `interpro_version` (`110.0`): InterPro data release, the newest
+  compatible with InterProScan 6.0.x (see
+  [versions.json](https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json)).
+  It is pinned so results are reproducible, and so a new InterPro release
+  doesn't make every genome job download it at once. Changing it re-runs
   `interproscan6_setup`, which downloads the new release once.
-- `interproscan6.goterms` / `.pathways` - GO terms and pathways, which
-  InterProScan6 leaves off by default; on here, since funannotate2 takes its
-  GO annotation from them.
-- `interproscan6.profile` - the Nextflow profile InterProScan6 runs its own
-  containers with: `apptainer` (default, for the cluster), `singularity`, or
+- `profile` (`apptainer`): the Nextflow profile InterProScan6 runs its own
+  containers with: `apptainer` (for the cluster), `singularity`, or
   `docker` on a machine with a Docker daemon.
-- `interproscan6.container_cache` - where those images are pulled to, once,
-  shared by every genome.
+- `datadir` (`data/databases/interproscan6`): InterProScan6's databases,
+  downloaded by `interproscan6_setup`.
+- `container_cache` (`data/databases/interproscan6_containers`): where its
+  images are pulled to, once, shared by every genome.
+- `formats` (`xml,tsv,json,gff3`): output formats; `tsv` is always written,
+  since funannotate2 reads it.
+- `goterms` / `pathways` (`true`): GO terms and MetaCyc/Reactome pathways,
+  which InterProScan6 leaves off by default; on here, since funannotate2
+  takes its GO annotation from them.
+- `extra`: any other InterProScan6 flags.
+
+**`funannotate2`**
+- `db_dir` (`data/databases/funannotate2`): `FUNANNOTATE2_DB`, filled by
+  rule `funannotate2_database`.
+- `busco_lineage` (`fungi`): the default lineage; a genome's own
+  `busco_lineage` overrides it.
+- `clean_minlen` (`500`): funannotate2 clean drops contigs shorter than
+  this (not used for genomes with `keep_contigs`).
+- `addons_version` (`26.3.7`): funannotate2-addons release, installed from
+  PyPI into `resources/`.
+- `extra`: any other `funannotate2 annotate` flags.
+
+**`omark`**
+- `db_dir` (`data/databases/omark`).
+- `db_url` / `db_md5`: the OMAmer database (`LUCA.h5`, ~10 GB, OMA release
+  May 2026, built with OMAmer 2.1.0), pinned to its Zenodo record rather
+  than omabrowser.org's `LUCA.h5`, which moves to each new release. Set
+  `db_md5: ""` to skip the checksum.
+- `extra`: any other OMArk flags.
+
+**`ncbi`** (only used for genomes with `ncbi_submission`)
+- `sbt_template` (`config/template.sbt`): your submission template, see
+  [NCBI submission](#ncbi-submission).
+- `structured_comment` (`""`): optional table2asn `-w` file, for example a
+  `##Genome-Assembly-Data-START##` / `##Genome-Annotation-Data-START##`
+  block for a `"new"` genome.
+- `gaps_min` (`10`) / `linkage_evidence` (`paired-ends`): runs of at least
+  this many Ns become `assembly_gap` features with this evidence (only
+  matters for gapped assemblies).
+- `allow_errors` (`false`): `true` lets `ncbi_submission` finish even when
+  the validator reports errors or FATAL discrepancies (the report still
+  lists them).
+- `extra`: any other table2asn flags.
+- `table2asn_version` / `table2asn_url` / `table2asn_sha256`: the table2asn
+  release (`1.29.324`) downloaded from NCBI by rule `get_table2asn` and
+  checked against its sha256 (bioconda's is a release behind).
 
 ## Containers
 
@@ -159,7 +232,7 @@ Docker image, which bakes a read-only `FUNANNOTATE2_DB` into the image;
 funannotate2 needs to write BUSCO lineages into that directory.
 
 Databases and outputs are inside the working directory, which Snakemake binds
-into every container. Anything you point at outside it -- `local_genome_dir`,
+into every container. Anything you point at outside it -- a genome's `fasta`,
 `funannotate2.db_dir`, `antismash.database_dir`, `omark.db_dir` -- must be bound too, e.g.
 `--apptainer-args "--bind /shared/databases,/path/to/assemblies"` (or
 `apptainer-args:` in `profile/config.yaml`).
@@ -222,7 +295,8 @@ anyway, for example to look at it before fixing things.
 
 - `ncbi_submission`:
   - `"update"` adds this annotation to an existing, unannotated GenBank WGS
-    assembly. The genome must come from `ncbi_accessions`. The sequences
+    assembly. The genome must be downloaded from NCBI (no `fasta`, its
+    name is the assembly accession). The sequences
     are named as NCBI's
     [WGS update instructions](https://www.ncbi.nlm.nih.gov/genbank/wgs_update/)
     ask: `gnl|WGS:<prefix>|<SeqID>|gb|<contig accession>`. Protein and
@@ -238,19 +312,15 @@ anyway, for example to look at it before fixing things.
   This is implied by `"update"`. Without it, funannotate2 clean sorts the
   contigs, drops duplicates and filters short ones.
 - `organelles: {contig_id: mitochondrion}` lists organelle sequences for
-  `"new"` genomes; `"update"` takes them from NCBI. Genes on organelle
+  `"new"` genomes (it needs `keep_contigs: true`, since funannotate2 clean
+  renames contigs); `"update"` takes them from NCBI. Genes on organelle
   sequences are dropped, because geneML predicts with the nuclear genetic
   code. Those sequences are submitted unannotated, with
   `[location=mitochondrion]` and `mgcode` = `mito_gcode` (default 4, the
   mould/protozoan mitochondrial code; use 3 for yeasts).
 
-**Under `ncbi:`:**
-
-- `structured_comment` is an optional table2asn `-w` file, for example a
-  Genome-Assembly-Data comment for a `"new"` genome.
-- `gaps_min` / `linkage_evidence`: runs of at least this many Ns become
-  `assembly_gap` features with this evidence.
-- `extra` passes any other table2asn flags.
+The `ncbi:` settings (structured comment, gaps, `allow_errors`, ...) are
+under [Changing a default](#changing-a-default).
 
 table2asn runs with `-T`, so it looks the organism up in NCBI Taxonomy.
 This also needs internet access. Without it, table2asn applies bacterial

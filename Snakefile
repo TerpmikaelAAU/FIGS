@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 import sys
@@ -6,6 +5,9 @@ from snakemake.utils import min_version
 
 min_version("9.0")
 
+# Tool settings have defaults in workflow/defaults.yaml; config/config.yaml
+# (the genomes, plus any setting to change) is merged over them.
+configfile: "workflow/defaults.yaml"
 configfile: "config/config.yaml"
 
 # ============================================================================
@@ -112,40 +114,31 @@ def keep_contigs(genome):
 
 # -----------------------------------------------------------------------------
 # GENOMES
-# Known when the workflow is parsed: every FASTA in local_genome_dir (named
-# after the file, extension stripped) plus every NCBI accession in the config.
-# Each is staged as data/genomes/{genome}.fna by rule prepare_genome.
+# One per entry under genomes: in the config. An entry with `fasta` is a
+# local assembly; one without is downloaded from NCBI, with its key as the
+# assembly accession. Each is staged as data/genomes/{genome}.fna by rule
+# prepare_genome.
 # -----------------------------------------------------------------------------
-LOCAL_GENOMES = {}
-_local_dir = config.get("local_genome_dir", "")
-if _local_dir and os.path.isdir(_local_dir):
-    for _ext in ("fna", "fa", "fasta"):
-        for _f in sorted(glob.glob(os.path.join(_local_dir, f"*.{_ext}"))):
-            _name = os.path.splitext(os.path.basename(_f))[0]
-            if _name in LOCAL_GENOMES:
-                raise WorkflowError(
-                    f"Two local assemblies are both named '{_name}': "
-                    f"{LOCAL_GENOMES[_name]} and {_f}. Rename one of them.")
-            LOCAL_GENOMES[_name] = _f
-
-NCBI_ACCESSIONS = list(config.get("ncbi_accessions") or [])
-for _acc in NCBI_ACCESSIONS:
-    if _acc in LOCAL_GENOMES:
-        raise WorkflowError(
-            f"'{_acc}' is both a local assembly ({LOCAL_GENOMES[_acc]}) and an "
-            f"NCBI accession in ncbi_accessions. Keep only one.")
-
-GENOMES = list(LOCAL_GENOMES) + NCBI_ACCESSIONS
+GENOMES = list(config.get("genomes") or {})
 if not GENOMES:
     raise WorkflowError(
-        "No genomes to annotate: put assemblies in local_genome_dir and/or "
-        "list accessions under ncbi_accessions in config/config.yaml.")
+        "No genomes to annotate: add an entry per genome under 'genomes:' "
+        "in config/config.yaml.")
 
+LOCAL_GENOMES = {}
 for _g in GENOMES:
-    if _g not in config.get("genomes", {}):
+    _meta = config["genomes"][_g] or {}
+    if not (_meta.get("species") or "").strip():
+        raise WorkflowError(f"Genome '{_g}' has no species in config/config.yaml.")
+    _fasta = (_meta.get("fasta") or "").strip()
+    if _fasta:
+        if not os.path.isfile(_fasta):
+            raise WorkflowError(f"Genome '{_g}': fasta {_fasta} does not exist.")
+        LOCAL_GENOMES[_g] = _fasta
+    elif not re.fullmatch(r"GC[AF]_\d{9}\.\d+", _g):
         raise WorkflowError(
-            f"Genome '{_g}' has no entry under 'genomes:' in config/config.yaml "
-            f"(funannotate2 annotate needs at least its species).")
+            f"Genome '{_g}' has no fasta, and '{_g}' is not an NCBI assembly "
+            f"accession (GCA_/GCF_...) to download.")
 
 BUSCO_LINEAGES = sorted({busco_lineage(_g) for _g in GENOMES})
 
@@ -158,11 +151,11 @@ for _g in GENOMES:
         raise WorkflowError(
             f"Genome '{_g}': ncbi_submission must be \"update\", \"new\" or "
             f"\"\", not \"{_mode}\".")
-    if _mode == "update" and _g not in NCBI_ACCESSIONS:
+    if _mode == "update" and _g in LOCAL_GENOMES:
         raise WorkflowError(
             f"Genome '{_g}': ncbi_submission \"update\" adds annotation to an "
-            f"assembly already in GenBank, so the genome must be one of "
-            f"ncbi_accessions (its contig accessions are looked up from NCBI).")
+            f"assembly already in GenBank, so it must be downloaded from NCBI: "
+            f"remove fasta and use the assembly accession as the genome's name.")
     _lt = (_meta.get("locus_tag") or "").strip()
     if _mode and not _lt:
         raise WorkflowError(
