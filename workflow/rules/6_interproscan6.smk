@@ -15,11 +15,11 @@
 # don't share one .nextflow/ cache and work/ dir. The images are pulled
 # once into interproscan6.container_cache and shared by every genome.
 #
-# NOTE: funannotate's --iprscan flag was written against InterProScan5's XML
-# schema. InterProScan6 is a very recent rewrite and its XML output has not
-# been exhaustively verified against funannotate's parser here - if
-# `funannotate annotate` (rule 7) errors while reading {genome}.xml, compare
-# it against an InterProScan5 XML example and adjust/convert as needed.
+# GO terms and pathways are OFF by default in InterProScan6, so they are
+# switched on here (interproscan6.goterms / .pathways in the config).
+# funannotate2 reads the TSV (via rule external_annotations), not the XML:
+# the XML groups identical protein sequences under one entry, and the
+# parser only picks up the first ID of such a group.
 # -----------------------------------------------------------------------------
 rule interproscan6_setup:
     output:
@@ -65,23 +65,30 @@ rule interproscan6_setup:
 
 rule interproscan6:
     input:
-        proteins = rules.geneml.output.proteins,
+        proteins = rules.gene_models.output.proteins,
         ready = "data/databases/interproscan6_ready",
     output:
         out_dir = directory("results/{genome}/04_interproscan"),
-        xml = "results/{genome}/04_interproscan/{genome}.xml",
+        tsv = "results/{genome}/04_interproscan/{genome}.tsv",
     params:
         version = config["interproscan6"]["version"],
         profile = config["interproscan6"].get("profile", "apptainer"),
         # Absolute: Nextflow runs from its own launch directory (below).
-        proteins = lambda wc: os.path.abspath(f"results/{wc.genome}/02_geneml/{wc.genome}.geneml.proteins.faa"),
+        proteins = lambda wc: os.path.abspath(f"results/{wc.genome}/02_geneml/{wc.genome}.models.proteins.faa"),
         out_dir = lambda wc: os.path.abspath(f"results/{wc.genome}/04_interproscan"),
         log = lambda wc: os.path.abspath(f"logs/{wc.genome}/interproscan6.log"),
         launch_dir = lambda wc: os.path.abspath(f"data/interproscan6_runs/{wc.genome}"),
         datadir = os.path.abspath(config["interproscan6"]["datadir"]),
         cache = os.path.abspath(config["interproscan6"].get(
             "container_cache", "data/databases/interproscan6_containers")),
-        formats = config["interproscan6"].get("formats", "xml,tsv,json,gff3"),
+        # tsv is what the rest of the workflow reads, so it is always written.
+        formats = ",".join(dict.fromkeys(
+            ["tsv"] + [f.strip() for f in config["interproscan6"].get("formats", "tsv").split(",") if f.strip()]
+        )),
+        go_pathways = " ".join(
+            flag for flag, key in (("--goterms", "goterms"), ("--pathways", "pathways"))
+            if config["interproscan6"].get(key, True)
+        ),
         extra = config["interproscan6"].get("extra", ""),
     threads: 8
     log:
@@ -108,6 +115,7 @@ rule interproscan6:
             --outdir {params.out_dir} \
             --outprefix {wildcards.genome} \
             --formats {params.formats} \
+            {params.go_pathways} \
             {params.extra} \
             > {params.log} 2>&1
 
