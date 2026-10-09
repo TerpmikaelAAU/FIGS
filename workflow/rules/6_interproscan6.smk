@@ -3,8 +3,8 @@
 # pipeline that starts its own container for every analysis step. That is
 # why this is the one rule WITHOUT a `container:`: wrapping it in an
 # Apptainer container would mean Apptainer-in-Apptainer. It runs on the
-# host instead, with Nextflow + Java from the Snakemake env
-# (Snakemake_env.yml), and Nextflow pulls InterProScan6's images itself
+# host instead, with the pinned Nextflow + Java that get_nextflow installs
+# into resources/, and Nextflow pulls InterProScan6's images itself
 # with `-profile apptainer` (interproscan6.profile in the config; use
 # `docker` on a machine with a Docker daemon).
 #
@@ -29,8 +29,46 @@
 IPS6_READY = (f"data/databases/interproscan6_{config['interproscan6']['version']}"
               f"_interpro{config['interproscan6']['interpro_version']}.ready")
 
+# Put the pinned Java and Nextflow first on PATH in the InterProScan6 rules.
+NEXTFLOW_ENV = f"export JAVA_HOME={NEXTFLOW_DIR}/jdk; export PATH={NEXTFLOW_DIR}/jdk/bin:{NEXTFLOW_DIR}:$PATH"
+
+
+rule get_nextflow:
+    output:
+        nextflow = protected(f"{NEXTFLOW_DIR}/nextflow"),
+        java = protected(f"{NEXTFLOW_DIR}/jdk/bin/java"),
+    params:
+        dir = NEXTFLOW_DIR,
+        url = config["nextflow"]["url"],
+        sha256 = config["nextflow"]["sha256"],
+        java_url = config["nextflow"]["java_url"],
+        java_sha256 = config["nextflow"]["java_sha256"],
+    log:
+        "logs/get_nextflow.log",
+    resources:
+        mem_mb = resources["get_nextflow"]["mem_mb"],
+        runtime = resources["get_nextflow"]["runtime"],
+    container:
+        PYTHON_CONTAINER
+    shell:
+        r"""
+        rm -rf {params.dir}/jdk
+        mkdir -p {params.dir}/jdk
+        python workflow/scripts/download.py "{params.java_url}" {params.dir}/jdk.tar.gz \
+            --sha256 {params.java_sha256} > {log} 2>&1
+        tar -xzf {params.dir}/jdk.tar.gz -C {params.dir}/jdk --strip-components 1
+        rm {params.dir}/jdk.tar.gz
+        python workflow/scripts/download.py "{params.url}" {output.nextflow} \
+            --sha256 {params.sha256} >> {log} 2>&1
+        chmod +x {output.nextflow}
+        {output.java} -version >> {log} 2>&1
+        """
+
 
 rule interproscan6_setup:
+    input:
+        nextflow = rules.get_nextflow.output.nextflow,
+        java = rules.get_nextflow.output.java,
     output:
         marker = touch(IPS6_READY),
     params:
@@ -50,7 +88,7 @@ rule interproscan6_setup:
         runtime = resources["interproscan6_setup"]["runtime"],
     shell:
         r"""
-        export PATH={SNAKEMAKE_ENV_BIN}:$PATH
+        {NEXTFLOW_ENV}
         export NXF_APPTAINER_CACHEDIR={params.cache}
         export NXF_SINGULARITY_CACHEDIR={params.cache}
         mkdir -p {params.datadir} {params.cache}
@@ -79,6 +117,7 @@ rule interproscan6:
     input:
         proteins = rules.gene_models.output.proteins,
         ready = IPS6_READY,
+        nextflow = rules.get_nextflow.output.nextflow,
     output:
         out_dir = directory("results/{genome}/04_interproscan"),
         tsv = "results/{genome}/04_interproscan/{genome}.tsv",
@@ -111,7 +150,7 @@ rule interproscan6:
         runtime = resources["interproscan6"]["runtime"],
     shell:
         r"""
-        export PATH={SNAKEMAKE_ENV_BIN}:$PATH
+        {NEXTFLOW_ENV}
         mkdir -p {params.datadir} {params.cache} {params.out_dir}
         rm -rf {params.launch_dir}
         mkdir -p {params.launch_dir}
