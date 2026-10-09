@@ -1,0 +1,11 @@
+data/genomes/
+data/downloads/
+data/databases/
+results/
+logs/
+.snakemake/
+*.pyc
+__pycache__/
+resources/
+snake_log/
+data/interproscan6_runs/
