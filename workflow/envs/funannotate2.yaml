@@ -1,0 +1,6 @@
+name: funannotate2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - funannotate2=26.6.21

@@ -1,6 +1,7 @@
-name: funannotate
+name: omark
 channels:
   - conda-forge
   - bioconda
 dependencies:
-  - funannotate=1.8.17
+  - omark=0.5.0
+  - omamer=2.1.2
