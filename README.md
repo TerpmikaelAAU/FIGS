@@ -108,6 +108,11 @@ Edit `config/config.yaml`:
   first run.
 - `omark.db_url` / `omark.db_md5` - the OMAmer database (`LUCA.h5`, ~10 GB),
   pinned to a Zenodo release (OMA May 2026) and checked against its md5.
+- `interproscan6.interpro_version` - the InterPro data release (default
+  `110.0`, the newest compatible with InterProScan 6.0.x). It is pinned so
+  results are reproducible, and so a new InterPro release doesn't make every
+  genome job download it at once. Changing it re-runs
+  `interproscan6_setup`, which downloads the new release once.
 - `interproscan6.goterms` / `.pathways` - GO terms and pathways, which
   InterProScan6 leaves off by default; on here, since funannotate2 takes its
   GO annotation from them.
