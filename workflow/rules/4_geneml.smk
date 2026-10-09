@@ -76,15 +76,21 @@ rule geneml:
 # position; this replaces funannotate 1's `annotate --rename`. Without one,
 # gfftk sanitize keeps geneML's own IDs. Either way the protein FASTA is
 # written from the final GFF3, so its headers are the final transcript IDs.
+#
+# Genes on organelle sequences (the location column of sequence_info) are
+# dropped first: geneML predicts with the nuclear genetic code, so its calls
+# there are not real organelle genes. Those sequences stay unannotated.
 rule gene_models:
     input:
         genome = rules.softmask.output,
         gff3 = rules.geneml.output.gff3,
+        seqinfo = rules.sequence_info.output,
     output:
         gff3 = "results/{genome}/02_geneml/{genome}.models.gff3",
         proteins = "results/{genome}/02_geneml/{genome}.models.proteins.faa",
     params:
         locus_tag = lambda wc: (config["genomes"][wc.genome].get("locus_tag") or "").strip(),
+        nuclear = "results/{genome}/02_geneml/{genome}.nuclear.gff3",
     log:
         "logs/{genome}/gene_models.log",
     resources:
@@ -96,10 +102,17 @@ rule gene_models:
         "../envs/funannotate2.yaml"
     shell:
         r"""
+        awk -F'\t' 'NR == FNR {{ if (FNR > 1 && $4 != "") skip[$1] = 1; next }}
+                    /^#/ || !($1 in skip)' {input.seqinfo} {input.gff3} > {params.nuclear}
+        n_all=$(awk -F'\t' '$3 == "gene"' {input.gff3} | wc -l)
+        n_nuclear=$(awk -F'\t' '$3 == "gene"' {params.nuclear} | wc -l)
+        echo "genes on organelle sequences dropped: $((n_all - n_nuclear))" > {log}
+
         if [ -n "{params.locus_tag}" ]; then
-            gfftk rename -f {input.genome} -g {input.gff3} -l {params.locus_tag} -o {output.gff3} > {log} 2>&1
+            gfftk rename -f {input.genome} -g {params.nuclear} -l {params.locus_tag} -o {output.gff3} >> {log} 2>&1
         else
-            gfftk sanitize -f {input.genome} -g {input.gff3} -o {output.gff3} > {log} 2>&1
+            gfftk sanitize -f {input.genome} -g {params.nuclear} -o {output.gff3} >> {log} 2>&1
         fi
+        rm -f {params.nuclear}
         gfftk convert -f {input.genome} -i {output.gff3} --output-format proteins -n -o {output.proteins} >> {log} 2>&1
         """

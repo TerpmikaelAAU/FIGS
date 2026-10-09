@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 import sys
 from snakemake.utils import min_version
 
@@ -23,6 +24,7 @@ GB = 1024
 
 resources = {
     "prepare_genome":          {"mem_mb": 4  * GB, "runtime": 120},
+    "sequence_info":           {"mem_mb": 2  * GB, "runtime": 30},
     "antismash_database":      {"mem_mb": 4  * GB, "runtime": 240},
     "funannotate2_database":   {"mem_mb": 8  * GB, "runtime": 360},
     "funannotate2_clean":      {"mem_mb": 8  * GB, "runtime": 60},
@@ -38,6 +40,8 @@ resources = {
     "funannotate2_annotate":   {"mem_mb": 16 * GB, "runtime": 240},
     "omark_database":          {"mem_mb": 4  * GB, "runtime": 360},
     "omark":                   {"mem_mb": 32 * GB, "runtime": 120},
+    "get_table2asn":           {"mem_mb": 2  * GB, "runtime": 30},
+    "ncbi_submission":         {"mem_mb": 16 * GB, "runtime": 120},
     "results_summary":         {"mem_mb": 2  * GB, "runtime": 15},
 }
 
@@ -91,6 +95,21 @@ def busco_lineage(genome):
 # OMArk's OMAmer database (LUCA.h5, ~10 GB), shared by every genome.
 OMARK_DB = os.path.join(config["omark"]["db_dir"], "LUCA.h5")
 
+# table2asn for the NCBI submission: NCBI's own pinned release, installed
+# once into resources/ by rule get_table2asn (bioconda lags a release behind).
+TABLE2ASN_VERSION = config["ncbi"]["table2asn_version"]
+TABLE2ASN = f"resources/table2asn-{TABLE2ASN_VERSION}/table2asn"
+
+# NCBI submission mode per genome: "" (none), "update" or "new" (see config).
+def ncbi_mode(genome):
+    return (config["genomes"][genome].get("ncbi_submission") or "").strip()
+
+# Genomes whose contigs are used exactly as staged (funannotate2 clean is
+# skipped): asked for with keep_contigs, and always for an NCBI update,
+# whose sequences must match the deposited ones.
+def keep_contigs(genome):
+    return ncbi_mode(genome) == "update" or bool(config["genomes"][genome].get("keep_contigs"))
+
 # -----------------------------------------------------------------------------
 # GENOMES
 # Known when the workflow is parsed: every FASTA in local_genome_dir (named
@@ -130,6 +149,46 @@ for _g in GENOMES:
 
 BUSCO_LINEAGES = sorted({busco_lineage(_g) for _g in GENOMES})
 
+# NCBI submission settings are checked here, so mistakes stop the run at
+# start-up rather than after hours of annotation.
+for _g in GENOMES:
+    _meta = config["genomes"][_g]
+    _mode = ncbi_mode(_g)
+    if _mode not in ("", "update", "new"):
+        raise WorkflowError(
+            f"Genome '{_g}': ncbi_submission must be \"update\", \"new\" or "
+            f"\"\", not \"{_mode}\".")
+    if _mode == "update" and _g not in NCBI_ACCESSIONS:
+        raise WorkflowError(
+            f"Genome '{_g}': ncbi_submission \"update\" adds annotation to an "
+            f"assembly already in GenBank, so the genome must be one of "
+            f"ncbi_accessions (its contig accessions are looked up from NCBI).")
+    _lt = (_meta.get("locus_tag") or "").strip()
+    if _mode and not _lt:
+        raise WorkflowError(
+            f"Genome '{_g}' is set up for NCBI submission but has no locus_tag; "
+            f"use the prefix registered to its BioProject/BioSample.")
+    for _key in ("bioproject", "biosample"):
+        if _mode and not (_meta.get(_key) or "").strip():
+            raise WorkflowError(
+                f"Genome '{_g}' is set up for NCBI submission but has no {_key}.")
+    if _lt and not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{2,11}", _lt):
+        raise WorkflowError(
+            f"Genome '{_g}': locus_tag '{_lt}' is not a valid NCBI prefix "
+            f"(3-12 letters/digits, starting with a letter).")
+    if _meta.get("organelles") and not keep_contigs(_g):
+        raise WorkflowError(
+            f"Genome '{_g}': organelles needs keep_contigs: true, since "
+            f"funannotate2 clean renames the contigs.")
+
+NCBI_GENOMES = [_g for _g in GENOMES if ncbi_mode(_g)]
+# A warning rather than an error, so dry runs (and CI) work without one.
+if NCBI_GENOMES and not os.path.isfile(config["ncbi"]["sbt_template"]):
+    logger.warning(
+        f"No NCBI submission template at {config['ncbi']['sbt_template']}; "
+        f"ncbi_submission will fail for {', '.join(NCBI_GENOMES)} until you make "
+        f"one at https://submit.ncbi.nlm.nih.gov/genbank/template/submission/")
+
 # Keep {genome} from swallowing path separators, e.g. matching
 # "GCA_1/01_preprocess/GCA_1" in results/{genome}/... patterns.
 wildcard_constraints:
@@ -143,6 +202,7 @@ rule all:
         expand("results/{genome}/06_annotate/{genome}.gff3", genome=GENOMES),
         expand("results/{genome}/07_omark/{genome}.sum", genome=GENOMES),
         "results/final_summary.tsv",
+        expand("results/{genome}/08_ncbi/{genome}.sqn", genome=NCBI_GENOMES),
 
 # -----------------------------------------------------------------------------
 # INCLUDES
@@ -157,3 +217,4 @@ include: "workflow/rules/6_interproscan6.smk"
 include: "workflow/rules/7_funannotate2_annotate.smk"
 include: "workflow/rules/8_omark.smk"
 include: "workflow/rules/9_results_summary.smk"
+include: "workflow/rules/10_ncbi_submission.smk"

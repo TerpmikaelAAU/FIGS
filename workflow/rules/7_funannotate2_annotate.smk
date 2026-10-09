@@ -102,6 +102,9 @@ rule funannotate2_annotate:
         proteins = "results/{genome}/06_annotate/{genome}.proteins.fa",
         transcripts = "results/{genome}/06_annotate/{genome}.transcripts.fa",
         summary = "results/{genome}/06_annotate/{genome}.summary.json",
+        # Gene names/products funannotate2's name cleaner could not make
+        # NCBI-safe; worth a look before an NCBI submission.
+        curate = "results/{genome}/06_annotate/{genome}.need-curating.txt",
     params:
         out_dir = "results/{genome}/06_annotate",
         tmpdir = "results/{genome}/06_annotate/tmp",
@@ -150,5 +153,7 @@ rule funannotate2_annotate:
         cp "$res.proteins.fa"    {output.proteins}
         cp "$res.transcripts.fa" {output.transcripts}
         cp "$res.summary.json"   {output.summary}
+        curate={params.out_dir}/annotate_results/Gene2Products.need-curating.txt
+        if [ -f "$curate" ]; then cp "$curate" {output.curate}; else : > {output.curate}; fi
         rm -rf {params.tmpdir}
         """
