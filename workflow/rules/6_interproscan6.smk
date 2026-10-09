@@ -15,17 +15,27 @@
 # don't share one .nextflow/ cache and work/ dir. The images are pulled
 # once into interproscan6.container_cache and shared by every genome.
 #
+# Nextflow runs every task with its local executor inside this one SLURM
+# job, so --max-workers caps the parallel tasks at the job's threads.
+# The InterPro data release is pinned (interproscan6.interpro_version) and is
+# part of the setup marker's name, so changing it re-runs the setup.
+#
 # GO terms and pathways are OFF by default in InterProScan6, so they are
 # switched on here (interproscan6.goterms / .pathways in the config).
 # funannotate2 reads the TSV (via rule external_annotations), not the XML:
 # the XML groups identical protein sequences under one entry, and the
 # parser only picks up the first ID of such a group.
 # -----------------------------------------------------------------------------
+IPS6_READY = (f"data/databases/interproscan6_{config['interproscan6']['version']}"
+              f"_interpro{config['interproscan6']['interpro_version']}.ready")
+
+
 rule interproscan6_setup:
     output:
-        marker = touch("data/databases/interproscan6_ready"),
+        marker = touch(IPS6_READY),
     params:
         version = config["interproscan6"]["version"],
+        interpro = config["interproscan6"]["interpro_version"],
         profile = config["interproscan6"].get("profile", "apptainer"),
         datadir = os.path.abspath(config["interproscan6"]["datadir"]),
         cache = os.path.abspath(config["interproscan6"].get(
@@ -54,6 +64,8 @@ rule interproscan6_setup:
         nextflow run ebi-pf-team/interproscan6 \
             -r {params.version} \
             -profile {params.profile},test \
+            --interpro {params.interpro} \
+            --max-workers {threads} \
             --datadir {params.datadir} \
             --outdir {params.launch_dir}/test_output \
             >> {params.log} 2>&1
@@ -66,12 +78,13 @@ rule interproscan6_setup:
 rule interproscan6:
     input:
         proteins = rules.gene_models.output.proteins,
-        ready = "data/databases/interproscan6_ready",
+        ready = IPS6_READY,
     output:
         out_dir = directory("results/{genome}/04_interproscan"),
         tsv = "results/{genome}/04_interproscan/{genome}.tsv",
     params:
         version = config["interproscan6"]["version"],
+        interpro = config["interproscan6"]["interpro_version"],
         profile = config["interproscan6"].get("profile", "apptainer"),
         # Absolute: Nextflow runs from its own launch directory (below).
         proteins = lambda wc: os.path.abspath(f"results/{wc.genome}/02_geneml/{wc.genome}.models.proteins.faa"),
@@ -110,6 +123,8 @@ rule interproscan6:
         nextflow run ebi-pf-team/interproscan6 \
             -r {params.version} \
             -profile {params.profile} \
+            --interpro {params.interpro} \
+            --max-workers {threads} \
             --datadir {params.datadir} \
             --input {params.proteins} \
             --outdir {params.out_dir} \

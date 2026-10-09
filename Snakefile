@@ -34,7 +34,7 @@ resources = {
     "gene_models":             {"mem_mb": 4  * GB, "runtime": 30},
     "antismash":               {"mem_mb": 32 * GB, "runtime": 360},
     "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 360},
-    "interproscan6":           {"mem_mb": 16 * GB, "runtime": 360},
+    "interproscan6":           {"mem_mb": 32 * GB, "runtime": 360},
     "get_funannotate2_addons": {"mem_mb": 4  * GB, "runtime": 60},
     "external_annotations":    {"mem_mb": 4  * GB, "runtime": 30},
     "funannotate2_annotate":   {"mem_mb": 16 * GB, "runtime": 240},
@@ -182,8 +182,10 @@ for _g in GENOMES:
             f"funannotate2 clean renames the contigs.")
 
 NCBI_GENOMES = [_g for _g in GENOMES if ncbi_mode(_g)]
-# A warning rather than an error, so dry runs (and CI) work without one.
-if NCBI_GENOMES and not os.path.isfile(config["ncbi"]["sbt_template"]):
+# A warning rather than an error, so dry runs (and CI) work without one;
+# only from the main process, not again in every SLURM job's log.
+if (workflow.is_main_process and NCBI_GENOMES
+        and not os.path.isfile(config["ncbi"]["sbt_template"])):
     logger.warning(
         f"No NCBI submission template at {config['ncbi']['sbt_template']}; "
         f"ncbi_submission will fail for {', '.join(NCBI_GENOMES)} until you make "
