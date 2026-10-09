@@ -1,0 +1,51 @@
+# =============================================================================
+# FIGS default settings. Loaded before config/config.yaml, so any key here
+# can be overridden there by repeating it (only the keys you change, e.g.
+#   interproscan6:
+#     profile: "docker"
+# ). Every setting is described in README.md, under "Configuration".
+# =============================================================================
+
+geneml:
+  version: "1.2.0"
+  min_gene_score: "dynamic"
+  extra: ""
+
+antismash:
+  database_dir: "data/databases/antismash"
+  extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
+
+interproscan6:
+  version: "6.0.1"
+  interpro_version: "110.0"
+  profile: "apptainer"
+  datadir: "data/databases/interproscan6"
+  container_cache: "data/databases/interproscan6_containers"
+  formats: "xml,tsv,json,gff3"
+  goterms: true
+  pathways: true
+  extra: ""
+
+funannotate2:
+  db_dir: "data/databases/funannotate2"
+  busco_lineage: "fungi"
+  clean_minlen: 500
+  addons_version: "26.3.7"
+  extra: ""
+
+omark:
+  db_dir: "data/databases/omark"
+  db_url: "https://zenodo.org/records/20814376/files/LUCA.h5?download=1"
+  db_md5: "87a322a0a6381a8de0b539d62e277054"
+  extra: ""
+
+ncbi:
+  sbt_template: "config/template.sbt"
+  structured_comment: ""
+  gaps_min: 10
+  linkage_evidence: "paired-ends"
+  allow_errors: false
+  extra: ""
+  table2asn_version: "1.29.324"
+  table2asn_url: "https://ftp.ncbi.nlm.nih.gov/asn1-converters/versions/2025-09-16/by_program/table2asn/linux64.table2asn.gz"
+  table2asn_sha256: "785bed9880856b208ed84d9765ca094b7c7d12d2225781c2a1854b650d3984bf"
