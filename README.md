@@ -140,7 +140,9 @@ funannotate2:
   --pfam2go --rre`): extra antiSMASH analyses and flags.
 
 **`interproscan6`**
-- `version` (`6.0.1`): InterProScan6 release.
+- `version` (`6.0.2.2`): InterProScan6 release. Use 6.0.2 or newer with
+  InterPro 110.0: from 110.0 the Matches API also returns InterPro-N
+  matches, which 6.0.1 fails on.
 - `interpro_version` (`110.0`): InterPro data release, the newest
   compatible with InterProScan 6.0.x (see
   [versions.json](https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json)).
@@ -215,7 +217,7 @@ Every rule runs in one pinned image, set under `container:` in its rule file
 | `download_genome` | `staphb/ncbi-datasets:18.37.0` (NCBI `datasets` is not on bioconda) |
 | `stage_genome` | none: it only copies your assembly in, and without a container it can read it from anywhere |
 | `funannotate2_*`, `softmask`, `gene_models` | `quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0` (includes gfftk) |
-| `antismash*` | `quay.io/biocontainers/antismash:8.0.4--pyhdfd78af_1` |
+| `antismash*` | `antismash/standalone-lite:8.0.4`, the official image: antiSMASH writes pre-built data into its own install directory, which is read-only in a container, and this image ships it pre-built (the biocontainer doesn't) |
 | `omark*` | `quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0` (OMAmer 2.1.2) |
 | `get_geneml`, `geneml` | `python:3.12-slim`; geneML is only on PyPI, so `get_geneml` installs it once into `resources/geneml-<version>/` |
 | `get_funannotate2_addons`, `external_annotations` | `python:3.12-slim`, same approach for funannotate2-addons (`resources/funannotate2-addons-<version>/`) |
