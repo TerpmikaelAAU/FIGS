@@ -36,7 +36,7 @@ resources = {
     "gene_models":             {"mem_mb": 4  * GB, "runtime": 30},
     "antismash":               {"mem_mb": 32 * GB, "runtime": 360},
     "get_nextflow":            {"mem_mb": 2  * GB, "runtime": 30},
-    "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 360},
+    "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 1440},
     "interproscan6":           {"mem_mb": 32 * GB, "runtime": 360},
     "get_funannotate2_addons": {"mem_mb": 4  * GB, "runtime": 60},
     "external_annotations":    {"mem_mb": 4  * GB, "runtime": 30},
@@ -59,7 +59,10 @@ resources = {
 # -----------------------------------------------------------------------------
 NCBI_DATASETS_CONTAINER = "docker://staphb/ncbi-datasets:18.37.0"
 FUNANNOTATE2_CONTAINER  = "docker://quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0"
-ANTISMASH_CONTAINER     = "docker://quay.io/biocontainers/antismash:8.0.4--pyhdfd78af_1"
+# antiSMASH: the official image, not the biocontainer. antiSMASH writes
+# pre-built data (e.g. bgc_seeds.hmm) into its own package directory, which
+# is read-only in a container; the official image ships it pre-built.
+ANTISMASH_CONTAINER     = "docker://antismash/standalone-lite:8.0.4"
 OMARK_CONTAINER         = "docker://quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0"
 PYTHON_CONTAINER        = "docker://python:3.12-slim"
 
