@@ -93,7 +93,8 @@ rule interproscan6_setup:
         export NXF_SINGULARITY_CACHEDIR={params.cache}
         mkdir -p {params.datadir} {params.cache}
         rm -rf {params.launch_dir}
-        mkdir -p {params.launch_dir}
+        # 6.0.2.x types --datadir/--outdir as paths that must already exist
+        mkdir -p {params.launch_dir}/test_output
         cd {params.launch_dir}
 
         nextflow pull ebi-pf-team/interproscan6 -r {params.version} > {params.log} 2>&1
