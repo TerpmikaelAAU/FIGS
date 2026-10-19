@@ -11,3 +11,5 @@ snake_log/
 data/interproscan6_runs/
 config/*.sbt
 efficiency_*
+.cache/
+.keras/
