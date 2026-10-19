@@ -1,7 +1,8 @@
 # -----------------------------------------------------------------------------
 # One-off, shared antiSMASH database download. All per-genome antismash rules
-# depend on the marker file this rule produces. PYTHONUNBUFFERED so the
-# log shows how far it got even if the job is killed.
+# depend on the marker file this rule produces. A re-run skips the files
+# already downloaded. PYTHONUNBUFFERED so the log shows how far it got even
+# if the job is killed.
 # -----------------------------------------------------------------------------
 rule antismash_database:
     output:

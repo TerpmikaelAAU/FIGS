@@ -10,3 +10,4 @@ resources/
 snake_log/
 data/interproscan6_runs/
 config/*.sbt
+efficiency_*

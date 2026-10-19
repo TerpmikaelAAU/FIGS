@@ -16,7 +16,7 @@ antismash:
   extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
 
 interproscan6:
-  version: "6.0.1"
+  version: "6.0.2.2"
   interpro_version: "110.0"
   profile: "apptainer"
   datadir: "data/databases/interproscan6"
