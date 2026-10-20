@@ -18,6 +18,10 @@ usable by `funannotate2 annotate -a`:
     protein can get hundreds of them, nearly all from animals; for one
     10,800-gene genome they were 5.1 million notes. MetaCyc pathways are
     kept, and the InterProScan6 TSV still has everything.
+  * Each InterPro entry (note "InterPro:IPR000001 Kringle") also gets a
+    db_xref "InterPro:IPR000001". gfftk counts InterPro annotation (the
+    summary.json "interproscan" number) from db_xrefs only, so with notes
+    alone it reports 0; NCBI accepts InterPro db_xrefs.
 
 Usage: fix_annotations.py --gff3 models.gff3 -i in.annotations.txt -o out.txt
 """
@@ -27,6 +31,7 @@ import sys
 
 TRANSCRIPT_TYPES = {"mRNA", "tRNA", "rRNA", "ncRNA", "transcript"}
 GO_RE = re.compile(r"^(GO:\d{7})")
+INTERPRO_RE = re.compile(r"^InterPro:(IPR\d{6})\b")
 
 
 def parse_attributes(col):
@@ -124,11 +129,16 @@ def main():
                 if len(unmapped_examples) < 5:
                     unmapped_examples.append(fid)
                 continue
+            new = [(key, value)]
+            m = INTERPRO_RE.match(value) if key == "note" else None
+            if m:
+                new.append(("db_xref", f"InterPro:{m.group(1)}"))
             for t in targets:
-                row = (t, key, value)
-                if row not in seen:
-                    seen.add(row)
-                    rows.append(row)
+                for k, v in new:
+                    row = (t, k, v)
+                    if row not in seen:
+                        seen.add(row)
+                        rows.append(row)
 
     with open(args.out, "w") as out:
         out.write("#gene_id\tannotation_type\tannotation_value\n")
