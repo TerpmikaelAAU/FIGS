@@ -13,6 +13,11 @@ usable by `funannotate2 annotate -a`:
     GO term with its source, e.g. GO:0005515(InterPro); only the GO ID is kept.
   * Placeholder values ("-", or a trailing " -" where InterProScan6 had no
     description) are removed, and duplicate lines are dropped.
+  * Reactome pathways are dropped. InterPro maps each entry to the Reactome
+    pathways of every species it has (human, mouse, fly, ...), so one
+    protein can get hundreds of them, nearly all from animals; for one
+    10,800-gene genome they were 5.1 million notes. MetaCyc pathways are
+    kept, and the InterProScan6 TSV still has everything.
 
 Usage: fix_annotations.py --gff3 models.gff3 -i in.annotations.txt -o out.txt
 """
@@ -89,7 +94,7 @@ def main():
     lookup = id_map(args.gff3)
     seen = set()
     rows = []
-    n_in = n_unmapped = n_malformed = n_dropped = 0
+    n_in = n_unmapped = n_malformed = n_dropped = n_reactome = 0
     unmapped_examples = []
     with open(args.input) as fh:
         for line in fh:
@@ -110,6 +115,9 @@ def main():
             if not key or value in ("", "-"):
                 n_dropped += 1
                 continue
+            if value.startswith("Pathway:Reactome:"):
+                n_reactome += 1
+                continue
             targets = resolve(fid, lookup)
             if not targets:
                 n_unmapped += 1
@@ -128,7 +136,8 @@ def main():
             out.write("\t".join(row) + "\n")
 
     print(f"{args.input}: {n_in} lines in, {len(rows)} written, "
-          f"{n_dropped} empty values dropped, {n_malformed} malformed, "
+          f"{n_dropped} empty values dropped, {n_reactome} Reactome pathways "
+          f"dropped, {n_malformed} malformed, "
           f"{n_unmapped} with an ID not in {args.gff3}", file=sys.stderr)
     if unmapped_examples:
         print(f"  unmapped IDs, e.g.: {', '.join(unmapped_examples)}", file=sys.stderr)
