@@ -1,17 +1,21 @@
 # -----------------------------------------------------------------------------
 # funannotate2 annotate: Pfam, dbCAN (CAZymes), MEROPS, UniProtKB/Swiss-Prot
-# and BUSCO searches on the gene models, merged with the antiSMASH and
-# InterProScan6 results, then written out as GFF3, GenBank (table2asn), TBL
-# and protein/transcript FASTA.
+# and BUSCO searches on the gene models, merged with the antiSMASH,
+# InterProScan6 and eggNOG-mapper results, then written out as GFF3, GenBank
+# (table2asn), TBL and protein/transcript FASTA.
 #
 # funannotate2 takes outside results as 3-column tables (transcript ID,
 # annotation type, value). funannotate2-addons (f2a) converts the
 # InterProScan6 TSV and the antiSMASH GenBank into that format, and
-# fix_annotations.py then fixes three things f2a 26.3.7 gets wrong for this
-# setup (see the script):
+# fix_annotations.py then fixes what f2a 26.3.7 gets wrong for this setup
+# (see the script):
 #   * antiSMASH results are keyed by gene ID; funannotate2 wants transcript IDs
 #   * GO terms are written as `go_term`, which annotate ignores (`go_terms`)
 #   * InterProScan6 GO terms keep their (source) suffix
+#   * InterPro's Reactome pathways for every species (millions of notes,
+#     nearly all from animals) are passed on; they are dropped
+# eggNOG-mapper's table is written by emapper_annotations.py instead of f2a,
+# whose eggNOG descriptions would never become products (see the script).
 # -----------------------------------------------------------------------------
 rule get_funannotate2_addons:
     output:
@@ -42,10 +46,12 @@ rule external_annotations:
         gff3 = rules.gene_models.output.gff3,
         ips_tsv = rules.interproscan6.output.tsv,
         antismash_gbk = rules.antismash.output.gbk,
+        emapper = rules.eggnog_mapper.output.annotations,
     output:
         iprscan = "results/{genome}/05_annotations/{genome}.iprscan.annotations.txt",
         antismash = "results/{genome}/05_annotations/{genome}.antismash.annotations.txt",
         clusters = "results/{genome}/05_annotations/{genome}.antismash.clusters.txt",
+        emapper = "results/{genome}/05_annotations/{genome}.emapper.annotations.txt",
     params:
         out_dir = "results/{genome}/05_annotations",
         raw_dir = "results/{genome}/05_annotations/f2a",
@@ -77,6 +83,11 @@ rule external_annotations:
         python workflow/scripts/fix_annotations.py --gff3 {input.gff3} \
             -i {params.raw_dir}/antismash.annotations.txt -o {output.antismash} >> {log} 2>&1
         cp {params.raw_dir}/antismash.clusters.txt {output.clusters}
+
+        python workflow/scripts/emapper_annotations.py -i {input.emapper} \
+            -o {params.raw_dir}/emapper.annotations.txt >> {log} 2>&1
+        python workflow/scripts/fix_annotations.py --gff3 {input.gff3} \
+            -i {params.raw_dir}/emapper.annotations.txt -o {output.emapper} >> {log} 2>&1
         """
 
 
@@ -94,6 +105,7 @@ rule funannotate2_annotate:
         gff3 = rules.gene_models.output.gff3,
         iprscan = rules.external_annotations.output.iprscan,
         antismash = rules.external_annotations.output.antismash,
+        emapper = rules.external_annotations.output.emapper,
         db_marker = "data/databases/funannotate2db",
     output:
         gff3 = "results/{genome}/06_annotate/{genome}.gff3",
@@ -137,7 +149,7 @@ rule funannotate2_annotate:
             -f {input.genome} \
             -g {input.gff3} \
             -o {params.out_dir} \
-            -a {input.iprscan} {input.antismash} \
+            -a {input.iprscan} {input.antismash} {input.emapper} \
             -s "{params.species}" \
             "${{strain_flag[@]}}" \
             --busco-lineage {params.busco_lineage} \
