@@ -67,7 +67,8 @@ results/
                        # <genome>.annotations.tsv: one row per protein/tRNA/rRNA
     07_omark/          # <genome>.sum + OMArk plots/lists
     08_ncbi/           # <genome>.sqn to upload, .gbf, .validation.txt (NCBI genomes only)
-  final_summary.tsv
+    <genome>.final_summary.tsv   # this genome's row of final_summary.tsv
+  final_summary.tsv    # one row per genome
 ```
 
 ## Installation

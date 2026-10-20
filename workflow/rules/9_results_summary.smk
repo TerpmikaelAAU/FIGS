@@ -23,6 +23,8 @@ rule annotation_table:
 # -----------------------------------------------------------------------------
 # One-line-per-genome summary: gene counts, BGC regions, InterProScan6
 # coverage, OMArk completeness/consistency, locus_tag status, ...
+# Written for all genomes (results/final_summary.tsv) and, as a single row,
+# into each genome's folder (results/<genome>/<genome>.final_summary.tsv).
 # -----------------------------------------------------------------------------
 rule results_summary:
     input:
@@ -30,6 +32,7 @@ rule results_summary:
         omark = expand("results/{genome}/07_omark/{genome}.sum", genome=GENOMES),
     output:
         tsv = "results/final_summary.tsv",
+        per_genome = expand("results/{genome}/{genome}.final_summary.tsv", genome=GENOMES),
     params:
         genomes = GENOMES,
         genome_config = config["genomes"],
