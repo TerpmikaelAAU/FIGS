@@ -100,6 +100,8 @@ def row_for(cds):
                 cells["pfam"].append(value[len("PFAM:"):])
             elif value.startswith("UniProtKB/Swiss-Prot:"):
                 cells["swissprot"].append(value[len("UniProtKB/Swiss-Prot:"):])
+            elif value.startswith("InterPro:"):
+                pass  # the same entries as the InterPro notes, which have descriptions
             else:
                 cells["other_notes"].append(value)
         elif key == "note":
