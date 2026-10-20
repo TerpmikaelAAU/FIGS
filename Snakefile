@@ -34,10 +34,16 @@ resources = {
     "get_geneml":              {"mem_mb": 8  * GB, "runtime": 120},
     "geneml":                  {"mem_mb": 32 * GB, "runtime": 180},
     "gene_models":             {"mem_mb": 4  * GB, "runtime": 30},
+    "rfam_rrna_models":        {"mem_mb": 2  * GB, "runtime": 30},
+    "trnascan":                {"mem_mb": 4  * GB, "runtime": 120},
+    "rrna_search":             {"mem_mb": 16 * GB, "runtime": 240},
+    "ncrna_models":            {"mem_mb": 4  * GB, "runtime": 30},
     "antismash":               {"mem_mb": 32 * GB, "runtime": 360},
     "get_nextflow":            {"mem_mb": 2  * GB, "runtime": 30},
     "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 1440},
     "interproscan6":           {"mem_mb": 32 * GB, "runtime": 360},
+    "eggnog_database":         {"mem_mb": 4  * GB, "runtime": 720},
+    "eggnog_mapper":           {"mem_mb": 32 * GB, "runtime": 360},
     "get_funannotate2_addons": {"mem_mb": 4  * GB, "runtime": 60},
     "external_annotations":    {"mem_mb": 4  * GB, "runtime": 30},
     "funannotate2_annotate":   {"mem_mb": 16 * GB, "runtime": 240},
@@ -45,6 +51,7 @@ resources = {
     "omark":                   {"mem_mb": 32 * GB, "runtime": 120},
     "get_table2asn":           {"mem_mb": 2  * GB, "runtime": 30},
     "ncbi_submission":         {"mem_mb": 16 * GB, "runtime": 120},
+    "annotation_table":        {"mem_mb": 4  * GB, "runtime": 30},
     "results_summary":         {"mem_mb": 2  * GB, "runtime": 15},
 }
 
@@ -64,6 +71,7 @@ FUNANNOTATE2_CONTAINER  = "docker://quay.io/biocontainers/funannotate2:26.6.21--
 # is read-only in a container; the official image ships it pre-built.
 ANTISMASH_CONTAINER     = "docker://antismash/standalone-lite:8.0.4"
 OMARK_CONTAINER         = "docker://quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0"
+EGGNOG_CONTAINER        = "docker://quay.io/biocontainers/eggnog-mapper:2.1.15--pyhdfd78af_0"
 PYTHON_CONTAINER        = "docker://python:3.12-slim"
 
 # Nextflow + Java (Eclipse Temurin) for InterProScan6, pinned releases
@@ -199,6 +207,7 @@ wildcard_constraints:
 rule all:
     input:
         expand("results/{genome}/06_annotate/{genome}.gff3", genome=GENOMES),
+        expand("results/{genome}/06_annotate/{genome}.annotations.tsv", genome=GENOMES),
         expand("results/{genome}/07_omark/{genome}.sum", genome=GENOMES),
         "results/final_summary.tsv",
         expand("results/{genome}/08_ncbi/{genome}.sqn", genome=NCBI_GENOMES),
@@ -211,8 +220,10 @@ include: "workflow/rules/1_antismash_database.smk"
 include: "workflow/rules/2_funannotate2_database.smk"
 include: "workflow/rules/3_funannotate2_preprocess.smk"
 include: "workflow/rules/4_geneml.smk"
+include: "workflow/rules/4b_ncrna.smk"
 include: "workflow/rules/5_antismash.smk"
 include: "workflow/rules/6_interproscan6.smk"
+include: "workflow/rules/6b_eggnog_mapper.smk"
 include: "workflow/rules/7_funannotate2_annotate.smk"
 include: "workflow/rules/8_omark.smk"
 include: "workflow/rules/9_results_summary.smk"

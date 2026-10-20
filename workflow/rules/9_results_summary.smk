@@ -1,4 +1,26 @@
 # -----------------------------------------------------------------------------
+# Per genome, one row per protein with its functional annotation
+# (06_annotate/<genome>.annotations.tsv), read from funannotate2's .tbl.
+# -----------------------------------------------------------------------------
+rule annotation_table:
+    input:
+        tbl = rules.funannotate2_annotate.output.tbl,
+    output:
+        tsv = "results/{genome}/06_annotate/{genome}.annotations.tsv",
+    log:
+        "logs/{genome}/annotation_table.log",
+    resources:
+        mem_mb = resources["annotation_table"]["mem_mb"],
+        runtime = resources["annotation_table"]["runtime"],
+    container:
+        PYTHON_CONTAINER
+    shell:
+        r"""
+        python workflow/scripts/annotation_table.py -i {input.tbl} -o {output.tsv} > {log} 2>&1
+        """
+
+
+# -----------------------------------------------------------------------------
 # One-line-per-genome summary: gene counts, BGC regions, InterProScan6
 # coverage, OMArk completeness/consistency, locus_tag status, ...
 # -----------------------------------------------------------------------------

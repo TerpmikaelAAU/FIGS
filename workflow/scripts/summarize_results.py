@@ -1,19 +1,21 @@
 """
 Aggregate a one-line-per-genome summary: gene counts (geneML, final
-funannotate2 annotation), antiSMASH region count, proteins with an
+funannotate2 annotation, tRNAs, rRNAs), antiSMASH region count, proteins with an
 InterProScan6 hit, OMArk completeness and consistency, the BUSCO lineage
 funannotate2 used, and whether locus_tags were applied.
 """
 import csv
 import os
+from collections import Counter
 
 genomes = snakemake.params.genomes  # list of genome names
 config_genomes = snakemake.params.genome_config  # config["genomes"] dict
 busco_lineages = snakemake.params.busco_lineages  # genome -> lineage
 
 
-def count_genes(gff3):
-    n = 0
+def count_features(gff3):
+    """Return a Counter of the GFF3 feature types (gene, mRNA, tRNA, ...)."""
+    n = Counter()
     if os.path.exists(gff3):
         with open(gff3) as fh:
             for line in fh:
@@ -22,8 +24,8 @@ def count_genes(gff3):
                 if line.startswith("#"):
                     continue
                 fields = line.rstrip("\n").split("\t")
-                if len(fields) >= 3 and fields[2] == "gene":
-                    n += 1
+                if len(fields) >= 3:
+                    n[fields[2]] += 1
     return n
 
 
@@ -67,13 +69,17 @@ for genome in genomes:
     clade, completeness, consistency = omark_scores(
         f"results/{genome}/07_omark/{genome}.sum")
 
+    final = count_features(f"results/{genome}/06_annotate/{genome}.gff3")
     meta = config_genomes.get(genome, {})
     rows.append({
         "genome": genome,
         "species": meta.get("species", ""),
         "strain": meta.get("strain", "") or "",
-        "genes_geneml": count_genes(f"results/{genome}/02_geneml/{genome}.geneml.gff3"),
-        "genes_final": count_genes(f"results/{genome}/06_annotate/{genome}.gff3"),
+        "genes_geneml": count_features(f"results/{genome}/02_geneml/{genome}.geneml.gff3")["gene"],
+        # protein-coding: geneML gives one transcript per gene
+        "genes_final": final["mRNA"],
+        "tRNAs": final["tRNA"],
+        "rRNAs": final["rRNA"],
         "antismash_regions": n_regions,
         "proteins_with_interpro_hit": len(ips_proteins),
         "omark_clade": clade,
@@ -85,7 +91,7 @@ for genome in genomes:
     })
 
 fieldnames = ["genome", "species", "strain", "genes_geneml", "genes_final",
-              "antismash_regions", "proteins_with_interpro_hit", "omark_clade",
+              "tRNAs", "rRNAs", "antismash_regions", "proteins_with_interpro_hit", "omark_clade",
               "omark_completeness", "omark_consistency", "busco_lineage",
               "locus_tag", "annotation"]
 with open(snakemake.output.tsv, "w", newline="") as out:
