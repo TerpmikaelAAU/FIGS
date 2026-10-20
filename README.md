@@ -23,6 +23,8 @@ antiSMASH  InterProScan6  eggNOG-mapper   OMArk (completeness + consistency)
    │        (Nextflow)       │                 │
    └──── f2a / emapper + fix_annotations       │
         │                                      │
+        │ + tRNA/rRNA genes (tRNAscan-SE, Rfam)│
+        │                                      │
 funannotate2 annotate                          │
 (Pfam, dbCAN, MEROPS, Swiss-Prot, BUSCO, GO + the above)
         │                                      │
@@ -45,23 +47,24 @@ profile/
   config.yaml          # BioCloud SLURM executor profile
 workflow/
   defaults.yaml        # default tool settings (override them in config/config.yaml)
-  rules/               # 0_ ... 10_ (+ 6b_), one stage per file
+  rules/               # 0_ ... 10_ (+ 4b_, 6b_), one stage per file
   envs/                # tool+version reference (see "Containers")
   scripts/             # annotation table/fix scripts, summarize_results.py, NCBI scripts
 data/
   genomes/             # staged, unified input (created by the pipeline)
-  databases/           # antiSMASH / eggNOG / funannotate2 / InterProScan6 / OMArk DBs
+  databases/           # antiSMASH / eggNOG / funannotate2 / InterProScan6 / OMArk / Rfam DBs
 resources/             # geneML, funannotate2-addons, table2asn (created by the pipeline)
 results/
   <genome>/
     01_preprocess/     # cleaned + soft-masked assembly, <genome>.seqinfo.tsv
     02_geneml/         # geneML output + the final gene models (*.models.*)
+    02_ncrna/          # tRNAscan-SE + Rfam rRNA results; models_with_rna.gff3
     03_antismash/
     04_interproscan/
     04_eggnog/         # eggNOG-mapper output (<genome>.emapper.annotations, all columns)
     05_annotations/    # antiSMASH + InterProScan6 + eggNOG as funannotate2 tables
     06_annotate/       # <genome>.gff3/.gbk/.tbl/.proteins.fa/... (final)
-                       # <genome>.annotations.tsv: one row per protein
+                       # <genome>.annotations.tsv: one row per protein/tRNA/rRNA
     07_omark/          # <genome>.sum + OMArk plots/lists
     08_ncbi/           # <genome>.sqn to upload, .gbf, .validation.txt (NCBI genomes only)
   final_summary.tsv
@@ -135,6 +138,17 @@ funannotate2:
 - `min_gene_score` (`dynamic`): a number, or `dynamic` (needs at least
   100 kb of sequence).
 - `extra`: any other geneml flags.
+
+**`ncrna`** (tRNA and rRNA genes)
+- `rfam_dir` (`data/databases/rfam`): the four eukaryotic rRNA models
+  (5S, 5.8S, SSU, LSU), taken once from the Rfam release by rule
+  `rfam_rrna_models`.
+- `rfam_version` / `rfam_url` / `rfam_sha256` (`15.1`): the Rfam release
+  (`Rfam.cm.gz`, ~45 MB), checked against its sha256.
+- `rrna_min_coverage` (`0.8`): an rRNA hit must cover this fraction of the
+  Rfam model; shorter fragments are not annotated.
+- `trnascan_extra` / `cmsearch_extra`: any other tRNAscan-SE / cmsearch
+  flags.
 
 **`antismash`**
 - `database_dir` (`data/databases/antismash`): downloaded once by rule
@@ -232,7 +246,7 @@ Every rule runs in one pinned image, set under `container:` in its rule file
 |---|---|
 | `download_genome` | `staphb/ncbi-datasets:18.37.0` (NCBI `datasets` is not on bioconda) |
 | `stage_genome` | none: it only copies your assembly in, and without a container it can read it from anywhere |
-| `funannotate2_*`, `softmask`, `gene_models` | `quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0` (includes gfftk) |
+| `funannotate2_*`, `softmask`, `gene_models`, `rfam_rrna_models`, `trnascan`, `rrna_search`, `ncrna_models` | `quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0` (includes gfftk, tRNAscan-SE and Infernal) |
 | `eggnog_mapper` | `quay.io/biocontainers/eggnog-mapper:2.1.15--pyhdfd78af_0` |
 | `antismash*` | `antismash/standalone-lite:8.0.4`, the official image: antiSMASH writes pre-built data into its own install directory, which is read-only in a container, and this image ships it pre-built (the biocontainer doesn't) |
 | `omark*` | `quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0` (OMAmer 2.1.2) |
@@ -385,11 +399,10 @@ running it first.
   service on every run (failures are logged and ignored), and InterProScan6
   can look up precalculated matches online. The database rules
   (`antismash_database`, `eggnog_database`, `funannotate2_database`,
-  `omark_database`, `interproscan6_setup`, `get_nextflow`, `get_table2asn`)
-  need internet
-  access, and so do `download_genome`, `sequence_info` for `"update"`
+  `omark_database`, `rfam_rrna_models`, `interproscan6_setup`,
+  `get_nextflow`, `get_table2asn`) need internet access, and so do `download_genome`, `sequence_info` for `"update"`
   genomes and `ncbi_submission` (taxonomy lookup).
-- **Downloads resume.** The OMAmer and eggNOG databases, table2asn, Nextflow and Java
+- **Downloads resume.** The OMAmer, eggNOG and Rfam databases, table2asn, Nextflow and Java
   are fetched by `workflow/scripts/download.py`, which picks up where it
   left off when the connection drops, keeps the partial file as
   `<file>.part` so a re-run of the rule resumes it too, and checks the
@@ -420,8 +433,22 @@ running it first.
 - **`06_annotate/<genome>.annotations.tsv`** has one row per protein: IDs,
   location, gene name, product, EC numbers, and one column per source
   (InterPro, Pfam, GO, eggNOG, COG, CAZy, MEROPS, antiSMASH, BUSCO,
-  pathways, Swiss-Prot), like funannotate 1's `annotations.txt`. It is made
-  from the `.tbl`, since funannotate2's GFF3 splits notes at commas.
+  pathways, Swiss-Prot), like funannotate 1's `annotations.txt`, then one
+  row per tRNA and rRNA gene (`type` column). It is made from the `.tbl`,
+  since funannotate2's GFF3 splits notes at commas.
+- **tRNA and rRNA genes.** geneML predicts protein-coding genes only.
+  tRNAs come from tRNAscan-SE (as in funannotate 1 and funannotate2
+  predict); rRNAs from Infernal `cmsearch` with Rfam's eukaryotic rRNA
+  models and gathering thresholds. `workflow/scripts/ncrna_gff3.py` keeps
+  what NCBI accepts: tRNA pseudogenes, undetermined/suppressor tRNAs and
+  tRNAs outside 50-150 nt are dropped; tRNA products are NCBI-style
+  (`tRNA-Met`, not tRNAscan-SE's `iMet`); rRNAs must cover 80% of the model
+  and not be cut off by a contig end, since they cannot be marked partial.
+  `merge_ncrna.py` adds them just before `funannotate2 annotate`, numbered
+  on from the last protein-coding gene, so no protein changes ID and the
+  protein searches are not re-run; an RNA gene overlapping a protein-coding
+  CDS is left out (its log lists them). In a 30 Mb test genome tRNAscan-SE
+  took under a minute and cmsearch about a minute (7.5 GB RAM).
 - **06_annotate/ vs 08_ncbi/.** funannotate2 annotate runs table2asn
   itself, with a placeholder submitter and without genome mode, so the
   `.gbk` in `06_annotate/` is for reading, not for submission. Submit the

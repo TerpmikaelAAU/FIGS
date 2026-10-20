@@ -3,7 +3,8 @@
 One row per protein with its functional annotation, from funannotate2
 annotate's .tbl: gene and transcript ID, location, gene name, product, and
 one column per source (InterPro, Pfam, GO, eggNOG, CAZymes, MEROPS,
-antiSMASH, ...). The counterpart of funannotate 1's annotations.txt.
+antiSMASH, ...), followed by one row per tRNA and rRNA gene (type column).
+The counterpart of funannotate 1's annotations.txt.
 
 The .tbl is read rather than the GFF3, because funannotate2 joins a gene's
 notes with unescaped commas in the GFF3, which splits descriptions that
@@ -17,7 +18,7 @@ import csv
 import re
 import sys
 
-COLUMNS = ["gene_id", "transcript_id", "contig", "start", "end", "strand",
+COLUMNS = ["gene_id", "transcript_id", "type", "contig", "start", "end", "strand",
            "name", "product", "ec_number", "interpro", "pfam", "go_terms",
            "eggnog", "cog", "cazyme", "protease", "antismash", "busco",
            "pathways", "swissprot", "other_notes"]
@@ -35,6 +36,7 @@ NOTE_PREFIXES = [
     ("Pathway:", "pathways"),
 ]
 SMCOG_RE = re.compile(r"^SMCOG\d+")
+FEATURE_TYPES = ("CDS", "tRNA", "rRNA")
 GO_ASPECTS = {"go_function", "go_process", "go_component"}
 
 
@@ -43,8 +45,8 @@ def coord(text):
 
 
 def parse_tbl(path):
-    """Yield one dict per CDS: contig, intervals, gene qualifiers, and the
-    CDS qualifiers as a list of (key, value)."""
+    """Yield one dict per CDS, tRNA and rRNA: type, contig, intervals, gene
+    qualifiers, and its own qualifiers as a list of (key, value)."""
     contig = None
     gene = {}
     feature = None
@@ -52,7 +54,7 @@ def parse_tbl(path):
         for line in fh:
             line = line.rstrip("\n")
             if line.startswith(">Feature"):
-                if feature and feature["type"] == "CDS":
+                if feature and feature["type"] in FEATURE_TYPES:
                     yield feature
                 contig = line.split(None, 1)[1].strip()
                 feature = None
@@ -67,7 +69,7 @@ def parse_tbl(path):
                 else:
                     feature["quals"].append((key, value))
             elif len(cols) >= 3 and cols[2]:
-                if feature and feature["type"] == "CDS":
+                if feature and feature["type"] in FEATURE_TYPES:
                     yield feature
                 if cols[2] == "gene":
                     gene = {}
@@ -76,7 +78,7 @@ def parse_tbl(path):
                            "quals": []}
             elif len(cols) == 2 and feature is not None:
                 feature["intervals"].append((coord(cols[0]), coord(cols[1])))
-    if feature and feature["type"] == "CDS":
+    if feature and feature["type"] in FEATURE_TYPES:
         yield feature
 
 
@@ -119,6 +121,7 @@ def row_for(cds):
     gene = cds["gene"]
     cells["gene_id"] = gene.get("locus_tag", [])[:1]
     cells["name"] = gene.get("gene", [])[:1]
+    cells["type"] = [cds["type"]]
     cells["contig"] = [cds["contig"]]
     cells["start"] = [str(min(starts))]
     cells["end"] = [str(max(ends))]
@@ -137,11 +140,13 @@ def main():
         writer = csv.DictWriter(out, fieldnames=COLUMNS, delimiter="\t",
                                 lineterminator="\n")
         writer.writeheader()
-        n = 0
-        for cds in parse_tbl(args.tbl):
-            writer.writerow(row_for(cds))
-            n += 1
-    print(f"{args.tbl}: {n} proteins written to {args.out}", file=sys.stderr)
+        # proteins first, then the RNA genes
+        rows = sorted((row_for(f) for f in parse_tbl(args.tbl)),
+                      key=lambda r: FEATURE_TYPES.index(r["type"]))
+        writer.writerows(rows)
+    n = {t: sum(r["type"] == t for r in rows) for t in FEATURE_TYPES}
+    print(f"{args.tbl}: {n['CDS']} proteins, {n['tRNA']} tRNAs and {n['rRNA']} "
+          f"rRNAs written to {args.out}", file=sys.stderr)
 
 
 if __name__ == "__main__":
