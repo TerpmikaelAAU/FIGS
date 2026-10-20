@@ -26,6 +26,11 @@ interproscan6:
   pathways: true
   extra: ""
 
+eggnog:
+  db_dir: "data/databases/eggnog"
+  db_url: "http://eggnog5.embl.de/download/emapperdb-5.0.2"
+  extra: ""
+
 nextflow:
   version: "26.04.7"
   url: "https://github.com/nextflow-io/nextflow/releases/download/v26.04.7/nextflow-26.04.7-dist"

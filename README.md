@@ -18,16 +18,17 @@ funannotate2 clean → soft-mask (tantan)
         │
   gene models             (gfftk: optional locus_tag rename, protein FASTA)
         │
-   ┌────┼───────────────┬─────────────┐
-antiSMASH  InterProScan6 (Nextflow)   OMArk (completeness + consistency)
-   │            │                     │
-   └─ f2a + fix_annotations ─┘        │
-        │                             │
-funannotate2 annotate                 │
+   ┌────┴─────┬──────────────┬───────────────┐
+antiSMASH  InterProScan6  eggNOG-mapper   OMArk (completeness + consistency)
+   │        (Nextflow)       │                 │
+   └──── f2a / emapper + fix_annotations       │
+        │                                      │
+funannotate2 annotate                          │
 (Pfam, dbCAN, MEROPS, Swiss-Prot, BUSCO, GO + the above)
-        │                             │
-        │                             │
-        ├──────── final_summary.tsv ──┘
+        │                                      │
+annotation table (one row per protein)         │
+        │                                      │
+        ├──────── final_summary.tsv ───────────┘
         │
 NCBI submission (table2asn, validated)   only for genomes with ncbi_submission set
 ```
@@ -44,12 +45,12 @@ profile/
   config.yaml          # BioCloud SLURM executor profile
 workflow/
   defaults.yaml        # default tool settings (override them in config/config.yaml)
-  rules/               # 0_ ... 10_, one stage per file
+  rules/               # 0_ ... 10_ (+ 6b_), one stage per file
   envs/                # tool+version reference (see "Containers")
-  scripts/             # fix_annotations.py, summarize_results.py, NCBI scripts
+  scripts/             # annotation table/fix scripts, summarize_results.py, NCBI scripts
 data/
   genomes/             # staged, unified input (created by the pipeline)
-  databases/           # antiSMASH / funannotate2 / InterProScan6 / OMArk DBs
+  databases/           # antiSMASH / eggNOG / funannotate2 / InterProScan6 / OMArk DBs
 resources/             # geneML, funannotate2-addons, table2asn (created by the pipeline)
 results/
   <genome>/
@@ -57,8 +58,10 @@ results/
     02_geneml/         # geneML output + the final gene models (*.models.*)
     03_antismash/
     04_interproscan/
-    05_annotations/    # antiSMASH + InterProScan6 as funannotate2 tables
+    04_eggnog/         # eggNOG-mapper output (<genome>.emapper.annotations, all columns)
+    05_annotations/    # antiSMASH + InterProScan6 + eggNOG as funannotate2 tables
     06_annotate/       # <genome>.gff3/.gbk/.tbl/.proteins.fa/... (final)
+                       # <genome>.annotations.tsv: one row per protein
     07_omark/          # <genome>.sum + OMArk plots/lists
     08_ncbi/           # <genome>.sqn to upload, .gbf, .validation.txt (NCBI genomes only)
   final_summary.tsv
@@ -160,8 +163,21 @@ funannotate2:
   since funannotate2 reads it.
 - `goterms` / `pathways` (`true`): GO terms and MetaCyc/Reactome pathways,
   which InterProScan6 leaves off by default; on here, since funannotate2
-  takes its GO annotation from them.
+  takes its GO annotation from them. Reactome pathways stay in the
+  InterProScan6 TSV but are not passed to funannotate2 (see
+  [Notes](#notes--caveats)).
 - `extra`: any other InterProScan6 flags.
+
+**`eggnog`**
+- `db_dir` (`data/databases/eggnog`): the eggNOG 5.0.2 data
+  (`eggnog.db`, `eggnog_proteins.dmnd`, `eggnog.taxa.db`), downloaded once
+  by rule `eggnog_database`: ~12 GB to download, several times that
+  unpacked.
+- `db_url` (`http://eggnog5.embl.de/download/emapperdb-5.0.2`): where it
+  is downloaded from. eggNOG-mapper's own `download_eggnog_data.py` is not
+  used: up to 2.1.15 it points at eggnogdb.embl.de, which no longer exists.
+- `extra`: any other `emapper.py` flags, e.g. `--tax_scope Fungi`
+  (default: `auto`) or `--sensmode more-sensitive`.
 
 **`nextflow`**
 - `version` / `url` / `sha256` (`26.04.7`) and `java_url` / `java_sha256`
@@ -217,11 +233,12 @@ Every rule runs in one pinned image, set under `container:` in its rule file
 | `download_genome` | `staphb/ncbi-datasets:18.37.0` (NCBI `datasets` is not on bioconda) |
 | `stage_genome` | none: it only copies your assembly in, and without a container it can read it from anywhere |
 | `funannotate2_*`, `softmask`, `gene_models` | `quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0` (includes gfftk) |
+| `eggnog_mapper` | `quay.io/biocontainers/eggnog-mapper:2.1.15--pyhdfd78af_0` |
 | `antismash*` | `antismash/standalone-lite:8.0.4`, the official image: antiSMASH writes pre-built data into its own install directory, which is read-only in a container, and this image ships it pre-built (the biocontainer doesn't) |
 | `omark*` | `quay.io/biocontainers/omark:0.5.0--pyhdfd78af_0` (OMAmer 2.1.2) |
 | `get_geneml`, `geneml` | `python:3.12-slim`; geneML is only on PyPI, so `get_geneml` installs it once into `resources/geneml-<version>/` |
 | `get_funannotate2_addons`, `external_annotations` | `python:3.12-slim`, same approach for funannotate2-addons (`resources/funannotate2-addons-<version>/`) |
-| `sequence_info`, `get_table2asn`, `get_nextflow`, `ncbi_submission` | `python:3.12-slim`; `get_table2asn` downloads NCBI's table2asn binary once into `resources/table2asn-<version>/` and checks its sha256; `get_nextflow` does the same for Nextflow and Java (`resources/nextflow-<version>/`) |
+| `sequence_info`, `eggnog_database`, `annotation_table`, `get_table2asn`, `get_nextflow`, `ncbi_submission` | `python:3.12-slim`; `get_table2asn` downloads NCBI's table2asn binary once into `resources/table2asn-<version>/` and checks its sha256; `get_nextflow` does the same for Nextflow and Java (`resources/nextflow-<version>/`) |
 | `interproscan6_setup`, `interproscan6` | none, see below |
 | `results_summary` | none (plain Python, runs in the Snakemake env) |
 
@@ -367,11 +384,12 @@ running it first.
   `funannotate2 annotate` looks the species up in an online taxonomy
   service on every run (failures are logged and ignored), and InterProScan6
   can look up precalculated matches online. The database rules
-  (`antismash_database`, `funannotate2_database`, `omark_database`,
-  `interproscan6_setup`, `get_nextflow`, `get_table2asn`) need internet
+  (`antismash_database`, `eggnog_database`, `funannotate2_database`,
+  `omark_database`, `interproscan6_setup`, `get_nextflow`, `get_table2asn`)
+  need internet
   access, and so do `download_genome`, `sequence_info` for `"update"`
   genomes and `ncbi_submission` (taxonomy lookup).
-- **Downloads resume.** The OMAmer database, table2asn, Nextflow and Java
+- **Downloads resume.** The OMAmer and eggNOG databases, table2asn, Nextflow and Java
   are fetched by `workflow/scripts/download.py`, which picks up where it
   left off when the connection drops, keeps the partial file as
   `<file>.part` so a re-run of the rule resumes it too, and checks the
@@ -385,7 +403,25 @@ running it first.
   term is silently dropped); InterProScan6's `GO:...(InterPro)` source
   suffixes are stripped. The InterProScan6 TSV is parsed rather than the
   XML, because the XML groups identical proteins and f2a only reads the
-  first ID of each group.
+  first ID of each group. Reactome pathways are dropped: InterPro maps each
+  entry to the Reactome pathways of every species it covers (human, mouse,
+  fly, ...), which for one 10,800-gene genome came to 5.1 million notes,
+  nearly all from animals, and buried everything else in the GFF3/GenBank.
+  MetaCyc pathways are kept.
+- **eggNOG-mapper** gives most of the gene names and products, as it did in
+  funannotate 1. `workflow/scripts/emapper_annotations.py` converts its
+  table instead of f2a, whose eggNOG descriptions never become products in
+  funannotate2. funannotate2 merges sources with Swiss-Prot first, then
+  eggNOG, and its name cleaner swaps in curated products and fixes ones
+  NCBI would reject. EC numbers end up as `EC:` notes, since funannotate2
+  26.6.21 has no EC qualifier. eggNOG's GO terms and KEGG annotations are
+  not added, so GO annotation stays InterProScan-based; they are in
+  `04_eggnog/`.
+- **`06_annotate/<genome>.annotations.tsv`** has one row per protein: IDs,
+  location, gene name, product, EC numbers, and one column per source
+  (InterPro, Pfam, GO, eggNOG, COG, CAZy, MEROPS, antiSMASH, BUSCO,
+  pathways, Swiss-Prot), like funannotate 1's `annotations.txt`. It is made
+  from the `.tbl`, since funannotate2's GFF3 splits notes at commas.
 - **06_annotate/ vs 08_ncbi/.** funannotate2 annotate runs table2asn
   itself, with a placeholder submitter and without genome mode, so the
   `.gbk` in `06_annotate/` is for reading, not for submission. Submit the
@@ -403,7 +439,7 @@ running it first.
   the whole proteome is taxonomically consistent vs. inconsistent,
   contaminant or unknown -- a high unknown/fragmented share flags spurious
   gene models.
-- The antiSMASH, funannotate2 and OMArk database rules download large,
+- The antiSMASH, eggNOG, funannotate2 and OMArk database rules download large,
   shared reference data (several GB+ each) - run those once and reuse the
   database directories across projects rather than re-downloading.
 
