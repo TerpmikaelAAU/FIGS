@@ -34,6 +34,10 @@ resources = {
     "get_geneml":              {"mem_mb": 8  * GB, "runtime": 120},
     "geneml":                  {"mem_mb": 32 * GB, "runtime": 180},
     "gene_models":             {"mem_mb": 4  * GB, "runtime": 30},
+    "rfam_rrna_models":        {"mem_mb": 2  * GB, "runtime": 30},
+    "trnascan":                {"mem_mb": 4  * GB, "runtime": 120},
+    "rrna_search":             {"mem_mb": 16 * GB, "runtime": 240},
+    "ncrna_models":            {"mem_mb": 4  * GB, "runtime": 30},
     "antismash":               {"mem_mb": 32 * GB, "runtime": 360},
     "get_nextflow":            {"mem_mb": 2  * GB, "runtime": 30},
     "interproscan6_setup":     {"mem_mb": 8  * GB, "runtime": 1440},
@@ -216,6 +220,7 @@ include: "workflow/rules/1_antismash_database.smk"
 include: "workflow/rules/2_funannotate2_database.smk"
 include: "workflow/rules/3_funannotate2_preprocess.smk"
 include: "workflow/rules/4_geneml.smk"
+include: "workflow/rules/4b_ncrna.smk"
 include: "workflow/rules/5_antismash.smk"
 include: "workflow/rules/6_interproscan6.smk"
 include: "workflow/rules/6b_eggnog_mapper.smk"

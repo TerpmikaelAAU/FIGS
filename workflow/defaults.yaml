@@ -11,6 +11,15 @@ geneml:
   min_gene_score: "dynamic"
   extra: ""
 
+ncrna:
+  rfam_dir: "data/databases/rfam"
+  rfam_version: "15.1"
+  rfam_url: "https://ftp.ebi.ac.uk/pub/databases/Rfam/15.1/Rfam.cm.gz"
+  rfam_sha256: "e2e636e9ce138dae506769aa74d067ce35466e94002818cfe125ea2a3cab8168"
+  rrna_min_coverage: 0.8
+  trnascan_extra: ""
+  cmsearch_extra: ""
+
 antismash:
   database_dir: "data/databases/antismash"
   extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"

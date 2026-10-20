@@ -2,7 +2,7 @@
 # funannotate2 annotate: Pfam, dbCAN (CAZymes), MEROPS, UniProtKB/Swiss-Prot
 # and BUSCO searches on the gene models, merged with the antiSMASH,
 # InterProScan6 and eggNOG-mapper results, then written out as GFF3, GenBank
-# (table2asn), TBL and protein/transcript FASTA.
+# (table2asn), TBL and protein/transcript FASTA, with the tRNA and rRNA genes.
 #
 # funannotate2 takes outside results as 3-column tables (transcript ID,
 # annotation type, value). funannotate2-addons (f2a) converts the
@@ -102,7 +102,8 @@ def _annotate_slug(genome):
 rule funannotate2_annotate:
     input:
         genome = rules.softmask.output,
-        gff3 = rules.gene_models.output.gff3,
+        # the gene models plus the tRNA/rRNA genes (4b_ncrna.smk)
+        gff3 = rules.ncrna_models.output.gff3,
         iprscan = rules.external_annotations.output.iprscan,
         antismash = rules.external_annotations.output.antismash,
         emapper = rules.external_annotations.output.emapper,
