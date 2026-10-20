@@ -2,7 +2,8 @@
 Aggregate a one-line-per-genome summary: gene counts (geneML, final
 funannotate2 annotation, tRNAs, rRNAs), antiSMASH region count, proteins with an
 InterProScan6 hit, OMArk completeness and consistency, the BUSCO lineage
-funannotate2 used, and whether locus_tags were applied.
+funannotate2 used, and whether locus_tags were applied. Written for all
+genomes and, as a single row, into each genome's folder.
 """
 import csv
 import os
@@ -94,7 +95,16 @@ fieldnames = ["genome", "species", "strain", "genes_geneml", "genes_final",
               "tRNAs", "rRNAs", "antismash_regions", "proteins_with_interpro_hit", "omark_clade",
               "omark_completeness", "omark_consistency", "busco_lineage",
               "locus_tag", "annotation"]
-with open(snakemake.output.tsv, "w", newline="") as out:
-    writer = csv.DictWriter(out, fieldnames=fieldnames, delimiter="\t")
-    writer.writeheader()
-    writer.writerows(rows)
+
+
+def write_tsv(path, rows):
+    with open(path, "w", newline="") as out:
+        writer = csv.DictWriter(out, fieldnames=fieldnames, delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+write_tsv(snakemake.output.tsv, rows)
+# the same row in each genome's own folder
+for genome, row in zip(genomes, rows):
+    write_tsv(f"results/{genome}/{genome}.final_summary.tsv", [row])
