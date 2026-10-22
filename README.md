@@ -475,3 +475,10 @@ running it first.
 
 `.github/workflows/dry-run.yml` byte-compiles `workflow/scripts/*.py` and
 runs `snakemake -n` with Snakemake 9.26.1 on every push and pull request.
+
+## License
+
+FIGS is released under the [MIT License](LICENSE). The tools it runs
+(geneML, funannotate2, antiSMASH, InterProScan, eggNOG-mapper, OMArk,
+tRNAscan-SE, Infernal, table2asn, ...) and the databases it downloads keep
+their own licenses.
