@@ -60,7 +60,7 @@ funannotate2:
   # funannotate2 predict, and it needs minimap2, which the container lacks).
   db_dir: "data/databases/funannotate2"
   busco_lineage: "fungi"
-  clean_minlen: 500           # funannotate2 clean drops shorter contigs (not with keep_contigs)
+  clean_minlen: 500           # funannotate2 clean drops shorter contigs (skipped with keep_contigs or "update")
   addons_version: "26.3.7"
   extra: ""
 

@@ -136,7 +136,7 @@ Before uploading:
   - It writes GO terms as `go_term`, which annotate silently ignores.
   - antiSMASH results are keyed by gene, not transcript.
   - It only reads the first protein of each identical-protein group in the
-    InterProScan XML, so it is given the TSV instead.
+    InterProScan XML, so rule `external_annotations` gives it the TSV.
   - Reactome pathways are dropped. InterPro links each entry to every
     species' pathways, which for one genome came to 5.1 million notes,
     nearly all from animals.
@@ -156,7 +156,8 @@ Before uploading:
     protein; on a test genome those proteins were real. The dropped genes
     are listed in `logs/<genome>/ncrna_models.log`.
   - RNA genes get their own IDs (after the last protein-coding gene with a
-    `locus_tag`, `<genome>_tRNA00001` without), so adding them doesn't
+    `locus_tag`, `<genome>_tRNA00001` without, with `.` etc. in the genome
+    name turned into `_`), so adding them doesn't
     change protein IDs or rerun the protein searches.
 - **Soft-masking** is tantan only (low-complexity/tandem repeats). For
   repeat-rich genomes, mask with RepeatModeler + RepeatMasker first.
