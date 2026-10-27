@@ -4,8 +4,8 @@
 #            accession as the key to download that assembly
 #   species: required; strain, locus_tag, busco_lineage and the NCBI keys
 #            are optional
-# Tool settings have defaults (workflow/defaults.yaml). All options are in
-# README.md, under "Configuration".
+# Tool settings have defaults in workflow/defaults.yaml; repeat a setting
+# here to change it. Per-genome keys are listed in README.md.
 # =============================================================================
 genomes:
   # my_strain:

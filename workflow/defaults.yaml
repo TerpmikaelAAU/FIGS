@@ -3,12 +3,13 @@
 # can be overridden there by repeating it (only the keys you change, e.g.
 #   interproscan6:
 #     profile: "docker"
-# ). Every setting is described in README.md, under "Configuration".
+# ). Comments note only what isn't obvious; `extra` takes any other flags
+# for that tool.
 # =============================================================================
 
 geneml:
   version: "1.2.0"
-  min_gene_score: "dynamic"
+  min_gene_score: "dynamic"   # a number, or "dynamic" (needs >= 100 kb of sequence)
   extra: ""
 
 ncrna:
@@ -16,7 +17,7 @@ ncrna:
   rfam_version: "15.1"
   rfam_url: "https://ftp.ebi.ac.uk/pub/databases/Rfam/15.1/Rfam.cm.gz"
   rfam_sha256: "e2e636e9ce138dae506769aa74d067ce35466e94002818cfe125ea2a3cab8168"
-  rrna_min_coverage: 0.8
+  rrna_min_coverage: 0.8      # fraction of the Rfam model an rRNA hit must cover
   trnascan_extra: ""
   cmsearch_extra: ""
 
@@ -25,22 +26,26 @@ antismash:
   extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
 
 interproscan6:
-  version: "6.0.2.2"
+  version: "6.0.2.2"          # >= 6.0.2 with InterPro 110: 6.0.1 fails on its InterPro-N matches
+  # Pinned for reproducibility, and so a new InterPro release doesn't make
+  # every genome job download it at once (interproscan6_setup fetches it once).
   interpro_version: "110.0"
-  profile: "apptainer"
+  profile: "apptainer"        # Nextflow profile: apptainer, singularity or docker
   datadir: "data/databases/interproscan6"
   container_cache: "data/databases/interproscan6_containers"
   formats: "xml,tsv,json,gff3"
   goterms: true
-  pathways: true
+  pathways: true              # Reactome is not passed on to funannotate2 (README caveats)
   extra: ""
 
 eggnog:
   db_dir: "data/databases/eggnog"
+  # eggNOG-mapper's own download_eggnog_data.py (<= 2.1.15) points at
+  # eggnogdb.embl.de, which no longer exists.
   db_url: "http://eggnog5.embl.de/download/emapperdb-5.0.2"
-  extra: ""
+  extra: ""                   # e.g. --tax_scope Fungi, --sensmode more-sensitive
 
-nextflow:
+nextflow:                     # the Nextflow + Java that InterProScan6 runs with
   version: "26.04.7"
   url: "https://github.com/nextflow-io/nextflow/releases/download/v26.04.7/nextflow-26.04.7-dist"
   sha256: "d1fc6db677dd40d79ff911c7dddad28edec4905707529c5c5001445085dbcf1b"
@@ -48,25 +53,30 @@ nextflow:
   java_sha256: "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
 
 funannotate2:
+  # All funannotate2 databases except RefSeq mitochondrial (only used by
+  # funannotate2 predict, and it needs minimap2, which the container lacks).
   db_dir: "data/databases/funannotate2"
   busco_lineage: "fungi"
-  clean_minlen: 500
+  clean_minlen: 500           # funannotate2 clean drops shorter contigs (not with keep_contigs)
   addons_version: "26.3.7"
   extra: ""
 
 omark:
   db_dir: "data/databases/omark"
+  # LUCA.h5 (~10 GB, OMA May 2026, OMAmer 2.1.0) pinned to Zenodo:
+  # omabrowser.org's LUCA.h5 changes with every OMA release.
   db_url: "https://zenodo.org/records/20814376/files/LUCA.h5?download=1"
-  db_md5: "87a322a0a6381a8de0b539d62e277054"
+  db_md5: "87a322a0a6381a8de0b539d62e277054"   # "" skips the check
   extra: ""
 
 ncbi:
   sbt_template: "config/template.sbt"
-  structured_comment: ""
-  gaps_min: 10
+  structured_comment: ""      # optional table2asn -w file
+  gaps_min: 10                # N runs this long become assembly_gap features
   linkage_evidence: "paired-ends"
-  allow_errors: false
+  allow_errors: false         # true: write the .sqn even if validation finds errors
   extra: ""
+  # From NCBI rather than bioconda, whose table2asn is a release behind.
   table2asn_version: "1.29.324"
   table2asn_url: "https://ftp.ncbi.nlm.nih.gov/asn1-converters/versions/2025-09-16/by_program/table2asn/linux64.table2asn.gz"
   table2asn_sha256: "785bed9880856b208ed84d9765ca094b7c7d12d2225781c2a1854b650d3984bf"
