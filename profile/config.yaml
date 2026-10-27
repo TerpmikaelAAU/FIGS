@@ -2,7 +2,7 @@
 # pipeline. Submission is handled by the native SLURM executor plugin.
 executor: slurm
 
-# Each rule runs in a container (see README "Containers"). Keep "apptainer"
+# Each rule runs in a container (set at the top of the Snakefile). Keep "apptainer"
 # as the only entry -- adding "conda" here breaks the containers.
 software-deployment-method:
   - apptainer

@@ -20,7 +20,7 @@ conda activate snakemake_figs
 # SLURM job via the executor plugin. 1 CPU + 4G is plenty.
 
 # No setup step needed -- each rule downloads its own container the first
-# time it runs (see README "Containers").
+# time it runs (images are set at the top of the Snakefile).
 snakemake --profile profile
 
 # If the workflow crashed and the directory is locked, run once with --unlock,
