@@ -58,11 +58,12 @@ resources = {
 # -----------------------------------------------------------------------------
 # CONTAINERS
 # Every rule runs in a pinned image (profile: software-deployment-method:
-# apptainer). The conda envs under workflow/envs/ list the same tool+version,
-# for reference or for running with --software-deployment-method conda.
-# InterProScan6 is the exception: it is a Nextflow pipeline that starts its
+# apptainer), except InterProScan6: it is a Nextflow pipeline that starts its
 # own containers, so it runs on the host with a pinned Nextflow + Java
 # (NEXTFLOW_DIR below; see 6_interproscan6.smk).
+# The conda envs under workflow/envs/ list the same tool+version for
+# reference only: geneML, funannotate2-addons (PyPI) and InterProScan6 have
+# none, so the workflow does not run with conda.
 # -----------------------------------------------------------------------------
 NCBI_DATASETS_CONTAINER = "docker://staphb/ncbi-datasets:18.37.0"
 FUNANNOTATE2_CONTAINER  = "docker://quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0"
