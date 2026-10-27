@@ -5,7 +5,8 @@
 #SBATCH --mem=4G
 #SBATCH --time=7-00:00:00
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT_90
-#SBATCH --mail-user=you@example.org
+# Mail goes to your cluster account; for another address submit with
+#   sbatch --mail-user=you@example.org slurm_submit.sbatch
 
 # Exit on first error, unset variable, or failed pipe
 set -euo pipefail

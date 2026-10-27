@@ -1,5 +1,6 @@
 # =============================================================================
-# One entry per genome. The key is the genome's name in results/<name>/.
+# Copy to config/config.yaml (git-ignored, so your genomes stay out of the
+# repo). One entry per genome. The key is the genome's name in results/<name>/.
 #   fasta:   path to your assembly, or leave it out and use an NCBI assembly
 #            accession as the key to download that assembly
 #   species: required; strain, locus_tag, busco_lineage and the NCBI keys
@@ -13,20 +14,6 @@ genomes:
   #   species: "Aspergillus niger"
   #   strain: "ABC123"
 
-  GCA_000002855.2:
-    species: "Aspergillus niger"
-    strain: "CBS 513.88"
-    locus_tag: "TEST"
-    busco_lineage: "sordariomycetes"
-    ncbi_submission: "update"
-    bioproject: "PRJNA000000"
-    biosample: "SAMN00000000"
-
-  GCA_000011425.1:
-    species: "Aspergillus nidulans"
-    strain: "FGSC A4"
-    locus_tag: "TEST2"
-    busco_lineage: "eurotiomycetes"
-    ncbi_submission: "update"
-    bioproject: "PRJNA000000"
-    biosample: "SAMN00000001"
+  # GCA_000002855.2:                  # no fasta: downloaded from NCBI
+  #   species: "Aspergillus niger"
+  #   strain: "CBS 513.88"

@@ -1,0 +1,15 @@
+# Config for the CI dry run (copied to config/config.yaml there). The NCBI
+# IDs are placeholders: a dry run only checks their presence and format.
+genomes:
+  GCA_000002855.2:
+    species: "Aspergillus niger"
+    strain: "CBS 513.88"
+    locus_tag: "TEST"
+    busco_lineage: "eurotiomycetes"
+    ncbi_submission: "update"
+    bioproject: "PRJNA000000"
+    biosample: "SAMN00000000"
+
+  GCA_000011425.1:
+    species: "Aspergillus nidulans"
+    strain: "FGSC A4"

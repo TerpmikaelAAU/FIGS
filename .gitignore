@@ -10,6 +10,7 @@ resources/
 snake_log/
 data/interproscan6_runs/
 config/*.sbt
+config/config.yaml
 efficiency_*
 .cache/
 .keras/

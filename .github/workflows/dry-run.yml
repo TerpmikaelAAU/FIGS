@@ -24,5 +24,7 @@ jobs:
       - name: Python scripts compile
         run: python -m py_compile workflow/scripts/*.py
 
-      - name: Dry-run, default config
-        run: snakemake -n --cores 1 --quiet rules
+      - name: Dry-run, CI config
+        run: |
+          cp .github/ci_config.yaml config/config.yaml
+          snakemake -n --cores 1 --quiet rules

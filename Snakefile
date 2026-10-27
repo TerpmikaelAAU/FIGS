@@ -6,6 +6,10 @@ min_version("9.0")
 
 # Tool settings have defaults in workflow/defaults.yaml; config/config.yaml
 # (the genomes, plus any setting to change) is merged over them.
+if not os.path.isfile("config/config.yaml"):
+    raise WorkflowError(
+        "No config/config.yaml: copy config/config.example.yaml to it and "
+        "add your genomes.")
 configfile: "workflow/defaults.yaml"
 configfile: "config/config.yaml"
 

@@ -30,7 +30,8 @@ or is installed by the pipeline; the first run downloads the databases.
 
 ## Configure
 
-`config/config.yaml`, one entry per genome:
+Copy `config/config.example.yaml` to `config/config.yaml` (git-ignored, so
+your genomes stay out of the repo) and add one entry per genome:
 
 ```yaml
 genomes:
