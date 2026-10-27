@@ -30,7 +30,8 @@ or is installed by the pipeline; the first run downloads the databases.
 
 ## Configure
 
-`config/config.yaml`, one entry per genome:
+Copy `config/config.example.yaml` to `config/config.yaml` (git-ignored, so
+your genomes stay out of the repo) and add one entry per genome:
 
 ```yaml
 genomes:
@@ -39,9 +40,9 @@ genomes:
     species: "Aspergillus niger"
     strain: "ABC123"
 
-  GCA_052058355.1:                    # no fasta: downloaded from NCBI
-    species: "Trichoderma asperellum"
-    strain: "TA1"
+  GCA_000002855.2:                    # no fasta: downloaded from NCBI
+    species: "Aspergillus niger"
+    strain: "CBS 513.88"
 ```
 
 | Key | |

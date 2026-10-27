@@ -43,7 +43,7 @@ rule geneml:
         proteins = "results/{genome}/02_geneml/{genome}.geneml.proteins.faa",
     params:
         # gene-id-prefix must be alphanumeric-ish; sanitize accessions like
-        # GCA_052058355.1 -> GCA_052058355_1
+        # GCA_000002855.2 -> GCA_000002855_2
         prefix = lambda wc: "".join(c if c.isalnum() else "_" for c in wc.genome),
         min_gene_score = config["geneml"]["min_gene_score"],
         extra = config["geneml"].get("extra", ""),
