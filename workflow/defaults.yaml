@@ -26,9 +26,12 @@ antismash:
   extra: "--cb-general --cb-knownclusters --cb-subclusters --asf --pfam2go --rre"
 
 interproscan6:
-  version: "6.0.2.2"          # >= 6.0.2 with InterPro 110: 6.0.1 fails on its InterPro-N matches
+  # >= 6.0.2 with InterPro 110: from 110 the Matches API also returns
+  # InterPro-N matches, which 6.0.1 fails on.
+  version: "6.0.2.2"
   # Pinned for reproducibility, and so a new InterPro release doesn't make
   # every genome job download it at once (interproscan6_setup fetches it once).
+  # Compatible releases: https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json
   interpro_version: "110.0"
   profile: "apptainer"        # Nextflow profile: apptainer, singularity or docker
   datadir: "data/databases/interproscan6"
@@ -71,7 +74,9 @@ omark:
 
 ncbi:
   sbt_template: "config/template.sbt"
-  structured_comment: ""      # optional table2asn -w file
+  # Optional table2asn -w file, e.g. a ##Genome-Assembly-Data-START## /
+  # ##Genome-Annotation-Data-START## block for a "new" genome.
+  structured_comment: ""
   gaps_min: 10                # N runs this long become assembly_gap features
   linkage_evidence: "paired-ends"
   allow_errors: false         # true: write the .sqn even if validation finds errors

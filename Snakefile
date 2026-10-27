@@ -58,8 +58,9 @@ resources = {
 # -----------------------------------------------------------------------------
 # CONTAINERS
 # Every rule runs in a pinned image (profile: software-deployment-method:
-# apptainer). The conda envs under workflow/envs/ list the same tool+version,
-# for reference or for running with --software-deployment-method conda.
+# apptainer). The conda envs under workflow/envs/ list the same tool+version
+# for reference only: geneML, funannotate2-addons (PyPI) and InterProScan6
+# (Nextflow) have none, so the workflow does not run with conda.
 # InterProScan6 is the exception: it is a Nextflow pipeline that starts its
 # own containers, so it runs on the host with a pinned Nextflow + Java
 # (NEXTFLOW_DIR below; see 6_interproscan6.smk).

@@ -12,7 +12,8 @@ assembly (local FASTA or NCBI accession)
   → geneML gene models (optional locus_tag rename)
   → antiSMASH, InterProScan6, eggNOG-mapper, OMArk
   → + tRNA/rRNA genes (tRNAscan-SE, Rfam)
-  → funannotate2 annotate (Pfam, dbCAN, MEROPS, Swiss-Prot, BUSCO + the above)
+  → funannotate2 annotate (Pfam, dbCAN, MEROPS, Swiss-Prot, BUSCO
+                           + antiSMASH, InterProScan6, eggNOG; OMArk is QC only)
   → annotations.tsv, final_summary.tsv
   → NCBI .sqn (table2asn, validated)   only for genomes with ncbi_submission
 ```
@@ -63,8 +64,9 @@ sbatch slurm_submit.sbatch         # or: snakemake --profile profile, in tmux
 snakemake --profile profile --unlock   # after a crash left the directory locked
 ```
 
-Per-rule resources are in the `resources` dict at the top of the
-`Snakefile` (`runtime` in minutes).
+`profile/` and `slurm_submit.sbatch` are set up for AAU BioCloud; adjust
+the `#SBATCH` lines and profile for another cluster. Per-rule resources are
+in the `resources` dict at the top of the `Snakefile` (`runtime` in minutes).
 
 Results go to `results/<genome>/`. The final annotation is in
 `06_annotate/` (`.gff3`, `.gbk`, `.tbl`, proteins), with
@@ -97,7 +99,8 @@ Setup:
   `mito_gcode` defaults to 4 (moulds); use 3 for yeasts.
 
 Before uploading:
-- Read the `.val` warnings and `06_annotate/<genome>.need-curating.txt`.
+- Read the warnings in `08_ncbi/table2asn/out/*.val` and
+  `06_annotate/<genome>.need-curating.txt`.
 - Submit the `.sqn` from `08_ncbi/`, not the `.gbk` in `06_annotate/`.
   funannotate2 builds that `.gbk` with a placeholder submitter and outside
   genome mode.
@@ -108,15 +111,17 @@ Before uploading:
 
 ## Caveats and lessons learned
 
-- **Network access** is needed by the database rules, `download_genome`,
-  `sequence_info` (for `"update"`), funannotate2 annotate (taxonomy lookup,
-  failures ignored) and `ncbi_submission`. table2asn runs with `-T`; without
-  internet it applies bacterial checks.
+- **Network access** is needed by the download/install rules
+  (`*_database`, `rfam_rrna_models`, `interproscan6_setup`, `get_*`),
+  `download_genome`, `sequence_info` (for `"update"`), `interproscan6`
+  (InterPro Matches API for precalculated matches), funannotate2 annotate
+  (taxonomy lookup, failures ignored) and `ncbi_submission`. table2asn runs
+  with `-T`; without internet it applies bacterial checks.
 - **Databases** are large (eggNOG ~12 GB download, OMArk `LUCA.h5` ~10 GB,
-  slow from Zenodo). Downloads resume after a dropped connection
-  (`<file>.part`) and are checksum-verified. A database directory outside
-  the working directory must be bound into the containers, e.g.
-  `--apptainer-args "--bind /shared/databases"`.
+  slow from Zenodo). The OMAmer, eggNOG, Rfam, table2asn and Nextflow/Java
+  downloads resume after a dropped connection (`<file>.part`). A database
+  directory outside the working directory must be bound into the
+  containers, e.g. `--apptainer-args "--bind /shared/databases"`.
 - **Containers.**
   - antiSMASH uses the official `standalone-lite` image. The biocontainer
     lacks the pre-built data and can't write it into its read-only install.
@@ -131,7 +136,7 @@ Before uploading:
   - It writes GO terms as `go_term`, which annotate silently ignores.
   - antiSMASH results are keyed by gene, not transcript.
   - It only reads the first protein of each identical-protein group in the
-    InterProScan XML, so the TSV is used instead.
+    InterProScan XML, so it is given the TSV instead.
   - Reactome pathways are dropped. InterPro links each entry to every
     species' pathways, which for one genome came to 5.1 million notes,
     nearly all from animals.
@@ -150,8 +155,9 @@ Before uploading:
   - An RNA gene overlapping a protein-coding CDS is dropped, not the
     protein; on a test genome those proteins were real. The dropped genes
     are listed in `logs/<genome>/ncrna_models.log`.
-  - RNA genes are numbered after the last protein-coding gene, so adding
-    them doesn't change protein IDs or rerun the protein searches.
+  - RNA genes get their own IDs (after the last protein-coding gene with a
+    `locus_tag`, `<genome>_tRNA00001` without), so adding them doesn't
+    change protein IDs or rerun the protein searches.
 - **Soft-masking** is tantan only (low-complexity/tandem repeats). For
   repeat-rich genomes, mask with RepeatModeler + RepeatMasker first.
 - **Organelle contigs** are left unannotated, because geneML predicts with
