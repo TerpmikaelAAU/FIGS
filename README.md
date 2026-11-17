@@ -1,5 +1,7 @@
 # FIGS: fungal genome annotation
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24309704.svg)](https://doi.org/10.5281/zenodo.24309704)
+
 **F**unannotate2 + **I**nterProScan6 + **G**eneML + anti**S**MASH, with
 [OMArk](https://github.com/DessimozLab/OMArk) quality control, as a
 Snakemake 9 pipeline (SLURM executor plugin, one Apptainer container per
@@ -164,6 +166,13 @@ Before uploading:
   repeat-rich genomes, mask with RepeatModeler + RepeatMasker first.
 - **Organelle contigs** are left unannotated, because geneML predicts with
   the nuclear genetic code.
+
+## Citation
+
+Cite the archived release on Zenodo:
+[10.5281/zenodo.24309704](https://doi.org/10.5281/zenodo.24309704) (v1.0.1).
+[10.5281/zenodo.24309703](https://doi.org/10.5281/zenodo.24309703) always
+resolves to the latest version.
 
 ## License
 
