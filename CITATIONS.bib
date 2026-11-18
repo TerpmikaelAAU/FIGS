@@ -1,11 +1,10 @@
 % BibTeX for FIGS and every tool and database it runs, grouped by step.
 % Versions are the ones FIGS pins (Snakefile, workflow/defaults.yaml); check
 % them against your run's logs before quoting them in a methods section.
-% Software without a paper uses @software (biblatex); use @misc with plain
-% BibTeX styles that lack it.
+% Software without a paper is a misc entry.
 
 % ---- FIGS ------------------------------------------------------------------
-@software{terp2026figs,
+@misc{terp2026figs,
   author    = {Terp, Mikael},
   title     = {{FIGS: fungal genome annotation}},
   year      = {2026},
@@ -19,7 +18,7 @@
 % ---- Nextflow 26.04.7 (runs InterProScan 6) ---------------------------------
 @article{molder2021snakemake,
   author  = {
-    Mölder, Felix and
+    M{\"o}lder, Felix and
     Jablonski, Kim Philipp and
     Letcher, Brice and
     Hall, Michael B. and
@@ -33,13 +32,13 @@
     Holtgrewe, Manuel and
     Rahmann, Sven and
     Nahnsen, Sven and
-    Köster, Johannes},
+    K{\"o}ster, Johannes},
   title   = {Sustainable data analysis with {Snakemake}},
   journal = {F1000Research},
   year    = {2021},
   volume  = {10},
   pages   = {33},
-  doi     = {10.12688/f1000research.29032.2}
+  doi     = {10.12688/f1000research.29032.3}
 }
 
 @article{kurtzer2017singularity,
@@ -76,7 +75,7 @@
 % ---- Genome download: NCBI Datasets CLI 18.37.0 --------------------------
 @article{oleary2024datasets,
   author  = {
-    O’Leary, Nuala A. and
+    O'Leary, Nuala A. and
     Cox, Eric and
     Holmes, J. Bradley and
     Anderson, W. Ray and
@@ -105,12 +104,12 @@
 
 % ---- Assembly cleaning and soft-masking: funannotate2 26.6.21 clean
 % ---- (minimap2 via mappy), tantan via pytantan -----------------------------
-@software{palmer2026funannotate2,
-  author  = {Palmer, Jonathan M.},
-  title   = {{funannotate2}: eukaryotic genome annotation},
-  year    = {2026},
-  version = {26.6.21},
-  url     = {https://github.com/nextgenusfs/funannotate2}
+@misc{palmer2026funannotate2,
+  author       = {Palmer, Jonathan M.},
+  title        = {{funannotate2}: eukaryotic genome annotation},
+  year         = {2026},
+  version      = {26.6.21},
+  howpublished = {\url{https://github.com/nextgenusfs/funannotate2}}
 }
 
 @article{li2018minimap2,
@@ -137,17 +136,19 @@
   doi     = {10.1093/nar/gkq1212}
 }
 
-@software{larralde_pytantan,
-  author = {Larralde, Martin},
-  title  = {{pytantan}: {Cython} bindings and {Python} interface to {Tantan}},
-  url    = {https://github.com/althonos/pytantan}
+@misc{larralde_pytantan,
+  author       = {Larralde, Martin},
+  title        = {{pytantan}: {Cython} bindings and {Python} interface to {Tantan}},
+  year         = {2026},
+  note         = {Accessed 2026-11-18},
+  howpublished = {\url{https://github.com/althonos/pytantan}}
 }
 
 % ---- Gene prediction: geneML 1.2.0 ------------------------------------------
 @article{vader2026geneml,
   author  = {
     Vader, Lisa and
-    Harvey, Colin J.B. and
+    Harvey, Colin J. B. and
     Weber, Tilmann and
     Hon, Lawrence S.},
   title   = {{geneML}: {Gene} annotation across diverse fungal species using deep learning},
@@ -159,10 +160,10 @@
 % ---- tRNA and rRNA genes: tRNAscan-SE 2, Infernal cmsearch, Rfam 15.1 ----
 @article{chan2021trnascan,
   author  = {
-    Chan, Patricia P and
-    Lin, Brian Y and
-    Mak, Allysia J and
-    Lowe, Todd M},
+    Chan, Patricia P and
+    Lin, Brian Y and
+    Mak, Allysia J and
+    Lowe, Todd M},
   title   = {{tRNAscan-SE} 2.0: improved detection and functional classification of transfer {RNA} genes},
   journal = {Nucleic Acids Research},
   year    = {2021},
@@ -189,12 +190,12 @@
   author  = {
     Ontiveros-Palacios, Nancy and
     Cooke, Emma and
-    Nawrocki, Eric P and
+    Nawrocki, Eric P and
     Triebel, Sandra and
     Marz, Manja and
     Rivas, Elena and
     Griffiths-Jones, Sam and
-    Petrov, Anton I and
+    Petrov, Anton I and
     Bateman, Alex and
     Sweeney, Blake},
   title   = {{Rfam} 15: {RNA} families database in 2025},
@@ -213,28 +214,28 @@
     Shaw, Simon and
     Vader, Lisa and
     Szenei, Judit and
-    Reitz, Zachary L and
-    Augustijn, Hannah E and
-    Cediel-Becerra, José D D and
-    de Crécy-Lagard, Valérie and
-    Koetsier, Robert A and
-    Williams, Sam E and
+    Reitz, Zachary L and
+    Augustijn, Hannah E and
+    Cediel-Becerra, Jos{\'e} D D and
+    de Cr{\'e}cy-Lagard, Val{\'e}rie and
+    Koetsier, Robert A and
+    Williams, Sam E and
     Cruz-Morales, Pablo and
     Wongwas, Sopida and
-    Segurado Luchsinger, Alejandro E and
+    Segurado Luchsinger, Alejandro E and
     Biermann, Friederike and
     Korenskaia, Aleksandra and
-    Zdouc, Mitja M and
+    Zdouc, Mitja M and
     Meijer, David and
-    Terlouw, Barbara R and
-    van der Hooft, Justin J J and
+    Terlouw, Barbara R and
+    van der Hooft, Justin J J and
     Ziemert, Nadine and
-    Helfrich, Eric J N and
+    Helfrich, Eric J N and
     Masschelein, Joleen and
     Corre, Christophe and
-    Chevrette, Marc G and
-    van Wezel, Gilles P and
-    Medema, Marnix H and
+    Chevrette, Marc G and
+    van Wezel, Gilles P and
+    Medema, Marnix H and
     Weber, Tilmann},
   title   = {{antiSMASH} 8.0: extended gene cluster detection capabilities and analyses of chemistry, enzymology, and regulation},
   journal = {Nucleic Acids Research},
@@ -247,16 +248,16 @@
 
 @article{zdouc2025mibig,
   author  = {
-    Zdouc, Mitja M and
+    Zdouc, Mitja M and
     Blin, Kai and
-    Louwen, Nico L L and
+    Louwen, Nico L L and
     Navarro, Jorge and
     Loureiro, Catarina and
-    Bader, Chantal D and
-    Bailey, Constance B and
+    Bader, Chantal D and
+    Bailey, Constance B and
     Barra, Lena and
-    Booth, Thomas J and
-    Bozhüyük, Kenan A J and
+    Booth, Thomas J and
+    Bozh{\"u}y{\"u}k, Kenan A J and
     others},
   title   = {{MIBiG} 4.0: advancing biosynthetic gene cluster curation through global collaboration},
   journal = {Nucleic Acids Research},
@@ -288,37 +289,37 @@
   author  = {
     Blum, Matthias and
     Andreeva, Antonina and
-    Florentino, Laise Cavalcanti and
-    Chuguransky, Sara Rocio and
+    Florentino, Laise Cavalcanti and
+    Chuguransky, Sara Rocio and
     Grego, Tiago and
     Hobbs, Emma and
-    Pinto, Beatriz Lazaro and
+    Pinto, Beatriz Lazaro and
     Orr, Ailsa and
     Paysan-Lafosse, Typhaine and
     Ponamareva, Irina and
-    Salazar, Gustavo A and
+    Salazar, Gustavo A and
     Bordin, Nicola and
     Bork, Peer and
     Bridge, Alan and
     Colwell, Lucy and
     Gough, Julian and
-    Haft, Daniel H and
+    Haft, Daniel H and
     Letunic, Ivica and
-    Llinares-López, Felipe and
+    Llinares-L{\'o}pez, Felipe and
     Marchler-Bauer, Aron and
     Meng-Papaxanthos, Laetitia and
     Mi, Huaiyu and
-    Natale, Darren A and
-    Orengo, Christine A and
-    Pandurangan, Arun P and
+    Natale, Darren A and
+    Orengo, Christine A and
+    Pandurangan, Arun P and
     Piovesan, Damiano and
     Rivoire, Catherine and
-    Sigrist, Christian J A and
+    Sigrist, Christian J A and
     Thanki, Narmada and
-    Thibaud-Nissen, Françoise and
-    Thomas, Paul D and
-    Tosatto, Silvio C E and
-    Wu, Cathy H and
+    Thibaud-Nissen, Fran{\c{c}}oise and
+    Thomas, Paul D and
+    Tosatto, Silvio C E and
+    Wu, Cathy H and
     Bateman, Alex},
   title   = {{InterPro}: the protein sequence classification resource in 2025},
   journal = {Nucleic Acids Research},
@@ -333,7 +334,7 @@
 @article{cantalapiedra2021eggnogmapper,
   author  = {
     Cantalapiedra, Carlos P and
-    Hernández-Plaza, Ana and
+    Hern{\'a}ndez-Plaza, Ana and
     Letunic, Ivica and
     Bork, Peer and
     Huerta-Cepas, Jaime},
@@ -351,14 +352,14 @@
     Huerta-Cepas, Jaime and
     Szklarczyk, Damian and
     Heller, Davide and
-    Hernández-Plaza, Ana and
+    Hern{\'a}ndez-Plaza, Ana and
     Forslund, Sofia K and
     Cook, Helen and
     Mende, Daniel R and
     Letunic, Ivica and
     Rattei, Thomas and
-    Jensen, Lars J and
-    von Mering, Christian and
+    Jensen, Lars J and
+    von Mering, Christian and
     Bork, Peer},
   title   = {{eggNOG} 5.0: a hierarchical, functionally and phylogenetically annotated orthology resource based on 5090 organisms and 2502 viruses},
   journal = {Nucleic Acids Research},
@@ -387,26 +388,28 @@
 % ---- UniProtKB/Swiss-Prot with DIAMOND (above), BUSCO lineages with
 % ---- buscolite, GO terms; external tables converted by funannotate2-addons
 % ---- 26.3.7; GFF3/GenBank handling by GFFtk 26.5.22 --------------------------
-@software{palmer2026f2a,
-  author  = {Palmer, Jonathan M.},
-  title   = {{funannotate2-addons}: functional annotation of genomics data for {funannotate2}},
-  year    = {2026},
-  version = {26.3.7},
-  url     = {https://github.com/nextgenusfs/funannotate2-addons}
+@misc{palmer2026f2a,
+  author       = {Palmer, Jonathan M.},
+  title        = {{funannotate2-addons}: functional annotation of genomics data for {funannotate2}},
+  year         = {2026},
+  version      = {26.3.7},
+  howpublished = {\url{https://github.com/nextgenusfs/funannotate2-addons}}
 }
 
-@software{palmer2026gfftk,
-  author  = {Palmer, Jonathan M.},
-  title   = {{GFFtk}: genome annotation tool kit},
-  year    = {2026},
-  version = {26.5.22},
-  url     = {https://github.com/nextgenusfs/gfftk}
+@misc{palmer2026gfftk,
+  author       = {Palmer, Jonathan M.},
+  title        = {{GFFtk}: genome annotation tool kit},
+  year         = {2026},
+  version      = {26.5.22},
+  howpublished = {\url{https://github.com/nextgenusfs/gfftk}}
 }
 
-@software{palmer_buscolite,
-  author = {Palmer, Jonathan M.},
-  title  = {{buscolite}: simplified {BUSCO} analysis for gene prediction},
-  url    = {https://github.com/nextgenusfs/buscolite}
+@misc{palmer_buscolite,
+  author       = {Palmer, Jonathan M.},
+  title        = {{buscolite}: simplified {BUSCO} analysis for gene prediction},
+  year         = {2026},
+  note         = {Accessed 2026-11-18},
+  howpublished = {\url{https://github.com/nextgenusfs/buscolite}}
 }
 
 @article{larralde2023pyhmmer,
@@ -439,18 +442,18 @@
     Paysan-Lafosse, Typhaine and
     Andreeva, Antonina and
     Blum, Matthias and
-    Chuguransky, Sara Rocio and
+    Chuguransky, Sara Rocio and
     Grego, Tiago and
-    Pinto, Beatriz Lazaro and
-    Salazar, Gustavo A and
-    Bileschi, Maxwell L and
-    Llinares-López, Felipe and
+    Pinto, Beatriz Lazaro and
+    Salazar, Gustavo A and
+    Bileschi, Maxwell L and
+    Llinares-L{\'o}pez, Felipe and
     Meng-Papaxanthos, Laetitia and
-    Colwell, Lucy J and
-    Grishin, Nick V and
+    Colwell, Lucy J and
+    Grishin, Nick V and
     Schaeffer, R Dustin and
     Clementel, Damiano and
-    Tosatto, Silvio C E and
+    Tosatto, Silvio C E and
     Sonnhammer, Erik and
     Wood, Valerie and
     Bateman, Alex},
@@ -538,10 +541,10 @@
 
 @article{manni2021busco,
   author  = {
-    Manni, Mosè and
+    Manni, Mos{\`e} and
     Berkeley, Matthew R and
     Seppey, Mathieu and
-    Simão, Felipe A and
+    Sim{\~a}o, Felipe A and
     Zdobnov, Evgeny M},
   title   = {{BUSCO} {Update}: {Novel} and {Streamlined} {Workflows} along with {Broader} and {Deeper} {Phylogenetic} {Coverage} for {Scoring} of {Eukaryotic}, {Prokaryotic}, and {Viral} {Genomes}},
   journal = {Molecular Biology and Evolution},
@@ -611,7 +614,7 @@
     Nevers, Yannis and
     Warwick Vesztrocy, Alex and
     Rossier, Victor and
-    Train, Clément-Marie and
+    Train, Cl{\'e}ment-Marie and
     Altenhoff, Adrian and
     Dessimoz, Christophe and
     Glover, Natasha M.},
@@ -642,11 +645,11 @@
 @article{altenhoff2024oma,
   author  = {
     Altenhoff, Adrian M and
-    Warwick Vesztrocy, Alex and
+    Warwick Vesztrocy, Alex and
     Bernard, Charles and
     Train, Clement-Marie and
     Nicheperovich, Alina and
-    Prieto Baños, Silvia and
+    Prieto Ba{\~n}os, Silvia and
     Julca, Irene and
     Moi, David and
     Nevers, Yannis and
@@ -663,10 +666,10 @@
 }
 
 % ---- NCBI submission: table2asn 1.29.324 -----------------------------------
-@software{ncbi_table2asn,
-  author  = {{National Center for Biotechnology Information}},
-  title   = {table2asn},
-  year    = {2025},
-  version = {1.29.324},
-  url     = {https://www.ncbi.nlm.nih.gov/genbank/table2asn/}
+@misc{ncbi_table2asn,
+  author       = {{National Center for Biotechnology Information}},
+  title        = {table2asn},
+  year         = {2025},
+  version      = {1.29.324},
+  howpublished = {\url{https://www.ncbi.nlm.nih.gov/genbank/table2asn/}}
 }
