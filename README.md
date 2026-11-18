@@ -184,6 +184,9 @@ Before uploading:
 [10.5281/zenodo.24309703](https://doi.org/10.5281/zenodo.24309703) always
 resolves to the latest version.
 
+BibTeX for every tool and database FIGS runs is in
+[`CITATIONS.bib`](CITATIONS.bib), grouped by step with the pinned versions.
+
 ## License
 
 [MIT](LICENSE). The tools and databases FIGS downloads keep their own
