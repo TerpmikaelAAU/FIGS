@@ -169,8 +169,18 @@ Before uploading:
 
 ## Citation
 
-Cite the archived release on Zenodo:
-[10.5281/zenodo.24309704](https://doi.org/10.5281/zenodo.24309704) (v1.0.1).
+```bibtex
+@software{terp_2026_figs,
+  author    = {Terp, Mikael},
+  title     = {{FIGS: fungal genome annotation}},
+  year      = {2026},
+  version   = {v1.0.1},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.24309704},
+  url       = {https://doi.org/10.5281/zenodo.24309704}
+}
+```
+
 [10.5281/zenodo.24309703](https://doi.org/10.5281/zenodo.24309703) always
 resolves to the latest version.
 
