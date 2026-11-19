@@ -47,6 +47,8 @@ rule geneml:
         prefix = lambda wc: "".join(c if c.isalnum() else "_" for c in wc.genome),
         min_gene_score = config["geneml"]["min_gene_score"],
         extra = config["geneml"].get("extra", ""),
+    # geneML >= 1.4 starts one ~2.5 GB process per thread (at most one per
+    # contig) and does not cap it by memory, so keep mem_mb >= 2.5 GB x threads.
     threads: 8
     log:
         "logs/{genome}/geneml.log",
@@ -64,7 +66,6 @@ rule geneml:
             --gene-id-prefix {params.prefix} \
             --min-gene-score {params.min_gene_score} \
             --max-transcripts 1 \
-            --cpu-only \
             -c {threads} \
             {params.extra} \
             > {log} 2>&1
