@@ -69,7 +69,7 @@ resources = {
 # reference only: geneML, funannotate2-addons (PyPI) and InterProScan6 have
 # none, so the workflow does not run with conda.
 # -----------------------------------------------------------------------------
-NCBI_DATASETS_CONTAINER = "docker://staphb/ncbi-datasets:18.37.0"
+NCBI_DATASETS_CONTAINER = "docker://staphb/ncbi-datasets:18.39.0"
 FUNANNOTATE2_CONTAINER  = "docker://quay.io/biocontainers/funannotate2:26.6.21--pyhdfd78af_0"
 # antiSMASH: the official image, not the biocontainer. antiSMASH writes
 # pre-built data (e.g. bgc_seeds.hmm) into its own package directory, which
@@ -86,7 +86,7 @@ NEXTFLOW_DIR = os.path.abspath(f"resources/nextflow-{config['nextflow']['version
 
 # geneML is only on PyPI (no container), so rule get_geneml installs it once
 # into resources/ inside the python image, and geneml runs from there.
-GENEML_VERSION = config["geneml"].get("version", "1.2.0")
+GENEML_VERSION = config["geneml"].get("version", "1.5.0")
 GENEML_ENV = f"resources/geneml-{GENEML_VERSION}"
 
 # funannotate2-addons (f2a) parses the InterProScan6 and antiSMASH results

@@ -93,7 +93,7 @@ rule interproscan6_setup:
         export NXF_SINGULARITY_CACHEDIR={params.cache}
         mkdir -p {params.datadir} {params.cache}
         rm -rf {params.launch_dir}
-        # 6.0.2.x types --datadir/--outdir as paths that must already exist
+        # 6.0.2.x needs --datadir/--outdir to exist already (6.0.3 creates them)
         mkdir -p {params.launch_dir}/test_output
         cd {params.launch_dir}
 

@@ -23,7 +23,7 @@ assembly (local FASTA or NCBI accession)
 ## Install
 
 ```bash
-conda env create -f Snakemake_env.yml     # Snakemake 9.26.1 + SLURM plugin
+conda env create -f Snakemake_env.yml     # Snakemake 9.27.2 + SLURM plugin
 conda activate snakemake_figs
 ```
 

@@ -8,7 +8,7 @@
 # =============================================================================
 
 geneml:
-  version: "1.2.0"
+  version: "1.5.0"
   min_gene_score: "dynamic"   # a number, or "dynamic" (needs >= 100 kb of sequence)
   extra: ""
 
@@ -28,11 +28,11 @@ antismash:
 interproscan6:
   # >= 6.0.2 with InterPro 110: from 110 the Matches API also returns
   # InterPro-N matches, which 6.0.1 fails on.
-  version: "6.0.2.2"
+  version: "6.0.3.0"
   # Pinned for reproducibility, and so a new InterPro release doesn't make
   # every genome job download it at once (interproscan6_setup fetches it once).
   # Compatible releases: https://ftp.ebi.ac.uk/pub/software/unix/iprscan/6/6.0/versions.json
-  interpro_version: "110.0"
+  interpro_version: "111.0"
   profile: "apptainer"        # Nextflow profile: apptainer, singularity or docker
   datadir: "data/databases/interproscan6"
   container_cache: "data/databases/interproscan6_containers"
@@ -49,11 +49,11 @@ eggnog:
   extra: ""                   # e.g. --tax_scope Fungi, --sensmode more-sensitive
 
 nextflow:                     # the Nextflow + Java that InterProScan6 runs with
-  version: "26.04.7"
-  url: "https://github.com/nextflow-io/nextflow/releases/download/v26.04.7/nextflow-26.04.7-dist"
-  sha256: "d1fc6db677dd40d79ff911c7dddad28edec4905707529c5c5001445085dbcf1b"
-  java_url: "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
-  java_sha256: "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
+  version: "26.10.6"
+  url: "https://github.com/nextflow-io/nextflow/releases/download/v26.10.6/nextflow-26.10.6-dist"
+  sha256: "80e5332f37cd9a3b328fb843271209e090d91a7813f238e92f4efe3b5ee5d8d9"
+  java_url: "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13.1%2B2/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13.1_2.tar.gz"
+  java_sha256: "bb8a93f9ae6e7a693b2b721e85dbeff26ae1a77447985a8d7afcdd9c7cf6222e"
 
 funannotate2:
   # All funannotate2 databases except RefSeq mitochondrial (only used by
