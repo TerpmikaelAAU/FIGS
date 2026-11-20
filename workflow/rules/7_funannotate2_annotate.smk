@@ -14,6 +14,7 @@
 #   * InterProScan6 GO terms keep their (source) suffix
 #   * InterPro's Reactome pathways for every species (millions of notes,
 #     nearly all from animals) are passed on; they are dropped
+#     (already cut from the TSV before f2a, whose parse is quadratic in them)
 # eggNOG-mapper's table is written by emapper_annotations.py instead of f2a,
 # whose eggNOG descriptions would never become products (see the script).
 # -----------------------------------------------------------------------------
@@ -67,9 +68,20 @@ rule external_annotations:
         rm -rf {params.raw_dir}
         mkdir -p {params.raw_dir}
 
+        # Reactome pathways are dropped (fix_annotations.py) and f2a's TSV
+        # parse is quadratic in them, so take them out first: one genome's
+        # 440 MB TSV is 420 MB of Reactome lists and timed out.
+        awk -F'\t' -v OFS='\t' '
+            NF >= 15 && $15 ~ /Reactome:/ {{
+                n = split($15, p, "|"); s = ""
+                for (i = 1; i <= n; i++) if (p[i] !~ /^Reactome:/) s = s (s == "" ? "" : "|") p[i]
+                $15 = (s == "" ? "-" : s)
+            }}
+            {{ print }}' {input.ips_tsv} > {params.raw_dir}/interproscan.tsv
+
         # f2a logs parsing errors but still exits 0, so check for its output
         # (the clusters file is legitimately empty if antiSMASH found no BGCs).
-        {input.f2a} iprscan --parse {input.ips_tsv} -o {params.raw_dir} > {log} 2>&1
+        {input.f2a} iprscan --parse {params.raw_dir}/interproscan.tsv -o {params.raw_dir} > {log} 2>&1
         {input.f2a} antismash --parse {input.antismash_gbk} -o {params.raw_dir} >> {log} 2>&1
         for f in iprscan.annotations.txt antismash.annotations.txt antismash.clusters.txt; do
             if [ ! -f {params.raw_dir}/$f ]; then

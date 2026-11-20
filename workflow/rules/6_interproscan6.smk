@@ -160,9 +160,24 @@ rule interproscan6:
         export NXF_APPTAINER_CACHEDIR={params.cache}
         export NXF_SINGULARITY_CACHEDIR={params.cache}
 
+        # InterProScan6 writes big temp files to /tmp: copies of its sequence
+        # database from inside the Nextflow JVM (java.io.tmpdir), and
+        # treegrafter.py inside its container, where the node's /tmp is bound
+        # in. A node's /tmp can fill up on a large proteome, so both go to
+        # the launch dir instead (bound at /tmp and at its own path).
+        tmp={params.launch_dir}/tmp
+        mkdir -p $tmp
+        export TMPDIR=$tmp NXF_TEMP=$tmp NXF_OPTS="${{NXF_OPTS:-}} -Djava.io.tmpdir=$tmp"
+        {{
+            echo "apptainer.runOptions = \"-B $tmp:/tmp -B $tmp\""
+            echo "singularity.runOptions = \"-B $tmp:/tmp -B $tmp\""
+            echo "docker.runOptions = \"-v $tmp:/tmp -v $tmp:$tmp\""
+        }} > tmp.config
+
         nextflow run ebi-pf-team/interproscan6 \
             -r {params.version} \
             -profile {params.profile} \
+            -c tmp.config \
             --interpro {params.interpro} \
             --max-workers {threads} \
             --datadir {params.datadir} \
