@@ -114,6 +114,15 @@ rule interproscan6_setup:
         """
 
 
+def _ips6_tmp_base(genome):
+    # interproscan6.tmp_dir, absolute (the rule runs from its launch dir)
+    # unless it starts with a shell variable; default: the launch dir.
+    d = (config["interproscan6"].get("tmp_dir") or "").strip()
+    if not d:
+        return os.path.abspath(f"data/interproscan6_runs/{genome}")
+    return d if d.startswith("$") else os.path.abspath(d)
+
+
 rule interproscan6:
     input:
         proteins = rules.gene_models.output.proteins,
@@ -131,6 +140,9 @@ rule interproscan6:
         out_dir = lambda wc: os.path.abspath(f"results/{wc.genome}/04_interproscan"),
         log = lambda wc: os.path.abspath(f"logs/{wc.genome}/interproscan6.log"),
         launch_dir = lambda wc: os.path.abspath(f"data/interproscan6_runs/{wc.genome}"),
+        # A node-local scratch path (may use shell variables, e.g. $SLURM_JOB_ID)
+        # is faster than the shared filesystem; default is the launch dir.
+        tmp_base = lambda wc: _ips6_tmp_base(wc.genome),
         datadir = os.path.abspath(config["interproscan6"]["datadir"]),
         cache = os.path.abspath(config["interproscan6"].get(
             "container_cache", "data/databases/interproscan6_containers")),
@@ -160,18 +172,20 @@ rule interproscan6:
         export NXF_APPTAINER_CACHEDIR={params.cache}
         export NXF_SINGULARITY_CACHEDIR={params.cache}
 
-        # InterProScan6 writes big temp files to /tmp: copies of its sequence
-        # database from inside the Nextflow JVM (java.io.tmpdir), and
-        # treegrafter.py inside its container, where the node's /tmp is bound
-        # in. A node's /tmp can fill up on a large proteome, so both go to
-        # the launch dir instead (bound at /tmp and at its own path).
-        tmp={params.launch_dir}/tmp
+        # InterProScan6 copies its sequence database (SQLite) into
+        # java.io.tmpdir, in the Nextflow JVM itself, once per output writer;
+        # on a large proteome that filled a node's /tmp. Those copies go to
+        # interproscan6.tmp_dir instead (default: the launch dir). NXF_TEMP
+        # sets java.io.tmpdir; Nextflow passes TMPDIR on to its containers, so
+        # the folder is also bound there, at /tmp and at its own path.
+        tmp={params.tmp_base}/ips6_tmp_{wildcards.genome}
         mkdir -p $tmp
-        export TMPDIR=$tmp NXF_TEMP=$tmp NXF_OPTS="${{NXF_OPTS:-}} -Djava.io.tmpdir=$tmp"
+        export TMPDIR=$tmp NXF_TEMP=$tmp
         {{
             echo "apptainer.runOptions = \"-B $tmp:/tmp -B $tmp\""
             echo "singularity.runOptions = \"-B $tmp:/tmp -B $tmp\""
             echo "docker.runOptions = \"-v $tmp:/tmp -v $tmp:$tmp\""
+            echo "podman.runOptions = \"-v $tmp:/tmp -v $tmp:$tmp\""
         }} > tmp.config
 
         nextflow run ebi-pf-team/interproscan6 \
@@ -192,5 +206,5 @@ rule interproscan6:
         # The work/ dir holds a copy of every intermediate; the results are
         # already in out_dir.
         cd - > /dev/null
-        rm -rf {params.launch_dir}
+        rm -rf $tmp {params.launch_dir}
         """

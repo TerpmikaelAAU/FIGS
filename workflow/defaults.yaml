@@ -36,6 +36,10 @@ interproscan6:
   profile: "apptainer"        # Nextflow profile: apptainer, singularity or docker
   datadir: "data/databases/interproscan6"
   container_cache: "data/databases/interproscan6_containers"
+  # Where InterProScan6 puts its temporary database copies (several GB for a
+  # large proteome). "" = data/interproscan6_runs/<genome>; a node-local
+  # scratch dir is faster if the node has room (shell variables expand).
+  tmp_dir: ""
   formats: "xml,tsv,json,gff3"
   goterms: true
   pathways: true              # Reactome is not passed on to funannotate2 (README caveats)
