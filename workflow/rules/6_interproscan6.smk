@@ -120,7 +120,7 @@ def _ips6_tmp_base(genome):
     d = (config["interproscan6"].get("tmp_dir") or "").strip()
     if not d:
         return os.path.abspath(f"data/interproscan6_runs/{genome}")
-    return d if d.startswith("$") else os.path.abspath(d)
+    return d if d.startswith("$") else os.path.abspath(os.path.expanduser(d))
 
 
 rule interproscan6:
@@ -178,9 +178,13 @@ rule interproscan6:
         # interproscan6.tmp_dir instead (default: the launch dir). NXF_TEMP
         # sets java.io.tmpdir; Nextflow passes TMPDIR on to its containers, so
         # the folder is also bound there, at /tmp and at its own path.
-        tmp={params.tmp_base}/ips6_tmp_{wildcards.genome}
-        mkdir -p $tmp
-        export TMPDIR=$tmp NXF_TEMP=$tmp
+        # (cleared first: a failed run leaves its copies behind; made absolute,
+        # as the rm at the end runs from the original directory)
+        tmp="{params.tmp_base}/ips6_tmp_{wildcards.genome}"
+        rm -rf "$tmp"
+        mkdir -p "$tmp"
+        tmp=$(cd "$tmp" && pwd -P)
+        export TMPDIR="$tmp" NXF_TEMP="$tmp"
         {{
             echo "apptainer.runOptions = \"-B $tmp:/tmp -B $tmp\""
             echo "singularity.runOptions = \"-B $tmp:/tmp -B $tmp\""
@@ -206,5 +210,5 @@ rule interproscan6:
         # The work/ dir holds a copy of every intermediate; the results are
         # already in out_dir.
         cd - > /dev/null
-        rm -rf $tmp {params.launch_dir}
+        rm -rf "$tmp" {params.launch_dir}
         """
