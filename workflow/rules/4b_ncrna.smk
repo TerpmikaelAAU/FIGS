@@ -90,8 +90,13 @@ rule rrna_search:
     threads: 8
     log:
         "logs/{genome}/rrna_search.log",
+    # cmsearch's memory varies a lot between genomes (some went over 16 GB in
+    # 3 minutes; SLURM kills it before it logs anything), so a failed job is
+    # retried with twice the memory: 32, 64, then 128 GB. Any failure is
+    # retried, so a real error shows up three times in the logs.
+    retries: 2
     resources:
-        mem_mb = resources["rrna_search"]["mem_mb"],
+        mem_mb = lambda wc, attempt: resources["rrna_search"]["mem_mb"] * 2 ** (attempt - 1),
         runtime = resources["rrna_search"]["runtime"],
     container:
         FUNANNOTATE2_CONTAINER

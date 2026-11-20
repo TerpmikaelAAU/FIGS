@@ -142,7 +142,8 @@ Before uploading:
     InterProScan XML, so rule `external_annotations` gives it the TSV.
   - Reactome pathways are dropped. InterPro links each entry to every
     species' pathways, which for one genome came to 5.1 million notes,
-    nearly all from animals.
+    nearly all from animals. They are cut from the TSV before f2a reads
+    it, because f2a's parse slows down quadratically on them (timeouts).
   - InterPro entries also become `db_xref`s, because gfftk's
     `summary.json` only counts InterPro from `db_xref`s.
 - **eggNOG** gives most gene names and products. Its table is converted by
