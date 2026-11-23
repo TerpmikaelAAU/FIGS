@@ -158,14 +158,21 @@ rule interproscan6:
     threads: 8
     log:
         "logs/{genome}/interproscan6.log",
+    # Some genomes need more than 32 GB late in the run (OOM in
+    # REPRESENTATIVE_LOCATIONS after 6 h), so a failed job is retried once
+    # with twice the memory; -resume (below) makes that retry cheap.
+    retries: 1
     resources:
-        mem_mb = resources["interproscan6"]["mem_mb"],
+        mem_mb = lambda wc, attempt: resources["interproscan6"]["mem_mb"] * 2 ** (attempt - 1),
         runtime = resources["interproscan6"]["runtime"],
     shell:
         r"""
         {NEXTFLOW_ENV}
         mkdir -p {params.datadir} {params.cache} {params.out_dir}
-        rm -rf {params.launch_dir}
+        # A failed run leaves its launch dir (.nextflow/ cache and work/) in
+        # place, so the next attempt resumes at the failed task (-resume)
+        # instead of redoing hours of searches. Nextflow re-runs any task whose
+        # inputs changed.
         mkdir -p {params.launch_dir}
         cd {params.launch_dir}
 
@@ -190,12 +197,17 @@ rule interproscan6:
             echo "singularity.runOptions = \"-B $tmp:/tmp -B $tmp\""
             echo "docker.runOptions = \"-v $tmp:/tmp -v $tmp:$tmp\""
             echo "podman.runOptions = \"-v $tmp:/tmp -v $tmp:$tmp\""
-        }} > tmp.config
+            # REPRESENTATIVE_LOCATIONS runs one Java process per 5000 proteins,
+            # and each can use far more than the 4 GB it reserves, so they run
+            # one at a time instead of side by side in this one SLURM job.
+            echo "process {{ withName: 'REPRESENTATIVE_LOCATIONS' {{ maxForks = 1 }} }}"
+        }} > figs.config
 
         nextflow run ebi-pf-team/interproscan6 \
             -r {params.version} \
             -profile {params.profile} \
-            -c tmp.config \
+            -c figs.config \
+            -resume \
             --interpro {params.interpro} \
             --max-workers {threads} \
             --datadir {params.datadir} \
