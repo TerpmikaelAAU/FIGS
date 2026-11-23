@@ -172,7 +172,7 @@ rule interproscan6:
         # A failed run leaves its launch dir (.nextflow/ cache and work/) in
         # place, so the next attempt resumes at the failed task (-resume)
         # instead of redoing hours of searches. Nextflow re-runs any task whose
-        # inputs changed.
+        # inputs changed; the output writers always re-run (below).
         mkdir -p {params.launch_dir}
         cd {params.launch_dir}
 
@@ -201,6 +201,9 @@ rule interproscan6:
             # and each can use far more than the 4 GB it reserves, so they run
             # one at a time instead of side by side in this one SLURM job.
             echo "process {{ withName: 'REPRESENTATIVE_LOCATIONS' {{ maxForks = 1 }} }}"
+            # The writers write straight into out_dir, which Snakemake empties
+            # before a retry; from cache they would skip their (deleted) file.
+            echo "process {{ withName: 'WRITE_(GFF3|JSON|JSONL|TSV|XML)' {{ cache = false }} }}"
         }} > figs.config
 
         nextflow run ebi-pf-team/interproscan6 \

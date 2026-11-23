@@ -134,7 +134,8 @@ Before uploading:
   - InterProScan6 has no container: it is Nextflow starting its own
     containers, and wrapping it would mean Apptainer-in-Apptainer.
     `interproscan6_setup` runs once first, so parallel genome jobs don't all
-    download its data. A failed run keeps `data/interproscan6_runs/<genome>`
+    download its data.
+  - A failed InterProScan6 run keeps `data/interproscan6_runs/<genome>`
     (tens of GB) so the rerun resumes at the failed step; delete it to start
     over.
 - **funannotate2-addons (f2a 26.3.7) needs fixing** (`fix_annotations.py`):
