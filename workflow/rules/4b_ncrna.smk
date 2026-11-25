@@ -94,9 +94,9 @@ rule rrna_search:
     # 3 minutes; SLURM kills it before it logs anything), so a failed job is
     # retried with twice the memory: 32, 64, then 128 GB. Any failure is
     # retried, so a real error shows up three times in the logs.
-    # Only the main Snakemake retries (with more memory): a rule's own
-    # retries would also make the copy running inside the SLURM job retry
-    # in the same allocation, overriding its --retries 0.
+    # Only the main Snakemake retries: a rule's own retries would override
+    # the --retries 0 of the Snakemake running inside each SLURM job (or
+    # local subprocess), which would then retry in the same allocation.
     retries: 2 if workflow.is_main_process else 0
     resources:
         mem_mb = lambda wc, attempt: resources["rrna_search"]["mem_mb"] * 2 ** (attempt - 1),
