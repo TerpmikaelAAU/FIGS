@@ -161,7 +161,10 @@ rule interproscan6:
     # Some genomes need more than 32 GB late in the run (OOM in
     # REPRESENTATIVE_LOCATIONS after 6 h), so a failed job is retried once
     # with twice the memory; -resume (below) makes that retry cheap.
-    retries: 1
+    # Only the main Snakemake retries: a rule's own retries would override
+    # the --retries 0 of the Snakemake running inside each SLURM job (or
+    # local subprocess), which would then retry in the same allocation.
+    retries: 1 if workflow.is_main_process else 0
     resources:
         mem_mb = lambda wc, attempt: resources["interproscan6"]["mem_mb"] * 2 ** (attempt - 1),
         runtime = resources["interproscan6"]["runtime"],
